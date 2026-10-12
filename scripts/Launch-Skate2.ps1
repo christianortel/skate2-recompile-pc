@@ -20,6 +20,8 @@ $ErrorActionPreference = 'Stop'
 $launchRoot = Split-Path -Parent $PSScriptRoot
 
 try {
+    . (Join-Path $PSScriptRoot 'Check-Skate2Runtime.ps1')
+    $runtimeStatus = Get-Skate2RuntimeStatus
     $candidates = @(
         (Join-Path $launchRoot 'skate2.exe'),
         (Join-Path $launchRoot 'bin\skate2.exe'),
@@ -87,8 +89,11 @@ try {
     if ($PSBoundParameters.ContainsKey('Adapter')) { $arguments += "--d3d12_adapter=$Adapter" }
     if ($Diagnostics) { $arguments += @('--log_level=debug', '--log_flush_interval=1') }
     if ($CheckOnly) {
-        [pscustomobject]@{ Executable = $executable; GameData = $gameRoot; UserData = $userRoot; Cache = $cacheRoot; Arguments = $arguments }
+        [pscustomobject]@{ Executable = $executable; GameData = $gameRoot; UserData = $userRoot; Cache = $cacheRoot; Arguments = $arguments; Runtime = $runtimeStatus }
         exit 0
+    }
+    if (-not $runtimeStatus.Ready) {
+        throw ('Install or update the Microsoft Visual C++ x64 Runtime, then launch again. Open Install Visual C++ Runtime.url, or download it from ' + $runtimeStatus.Download)
     }
     Write-Host 'Starting Skate 2...'
     # Windows GUI programs must be waited on explicitly so their exit status is

@@ -4,10 +4,10 @@
 
 | Area | Status |
 | --- | --- |
-| Distribution | Source is public. A downloadable Windows player release is still in preparation. |
+| Distribution | A compiled Windows player ZIP is provided on [Releases](https://github.com/christianortel/skate2-recompile-pc/releases/latest). Original game files must be imported separately. |
 | Game revision | Only the executable listed in [INSTALL.md](INSTALL.md#supported-game-version) is accepted. |
 | Platforms | Windows x64 / Direct3D 12 only. |
-| Campaign | Opening campaign gameplay works; full progression, all missions, and photo challenges have not been validated. |
+| Campaign | Campaign progression has been played for approximately an hour without reported glitches. Full completion, every mission, and photo challenges have not been validated. |
 | Saves | Existing career save/reload works in the development build. Migration, additional save cases, and interrupted-save recovery need testing. |
 | Controllers | USB DualSense direct input has been tested. Xbox hardware, wireless connections, reconnects, and multiple controllers need broader coverage. |
 | Startup | A black loading screen can precede the title screen. |
@@ -25,9 +25,8 @@ A graphics synchronization timeout stops the game instead of continuing with inc
 - Expand campaign, save, replay, and long-session testing.
 - Measure performance across GPU families and rendering profiles.
 - Add ultrawide camera support with correct HUD, menus, replay, cutscenes, and effects.
-- Complete runtime source materials, dependency notices, release notes, and checksums for a player download.
 
-Progress toward the first player release is tracked in the [maintainer checklist](RELEASE_CHECKLIST.md).
+Release verification and further compatibility coverage are tracked in the [maintainer checklist](RELEASE_CHECKLIST.md).
 
 ## Report a problem
 

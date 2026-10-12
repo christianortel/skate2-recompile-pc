@@ -2,18 +2,23 @@
 
 A community Windows port of the Xbox 360 version of **Skate 2**, built with [ReXGlue](https://github.com/rexglue/rexglue-sdk).
 
-**Release status:** in development. Source code is available; a downloadable Windows player build has not been released. GitHub's **Code → Download ZIP** contains source code, not an installed game.
+**[Download Skate 2 PC for Windows](https://github.com/christianortel/skate2-recompile-pc/releases/latest)** — a compiled player package. No compiler or development tools are needed to play.
 
 ## Getting started
 
-To play the current version, follow the [step-by-step build guide](docs/BUILD.md). It covers the required tools, importing game files, compiling, and launching.
+1. Download **Skate2-PC-v0.1.0-Windows-x64.zip** from [Releases](https://github.com/christianortel/skate2-recompile-pc/releases/latest) and extract the entire ZIP into a writable folder.
+2. Run **Import Game Files.cmd** and select your extracted Xbox 360 game folder containing `default.xex` and `data`. This is a one-time copy and verification step.
+3. Connect your controller and run **Launch Skate 2.cmd**.
+
+If the launcher requests the Microsoft Visual C++ x64 Runtime, open the included **Install Visual C++ Runtime.url**, run Microsoft's installer, then launch again. The [installation guide](docs/INSTALL.md) covers every step, the supported game revision, controls, and troubleshooting.
 
 You will need:
 
-- A Windows x64 PC with a Direct3D 12 GPU.
+- A Windows 10/11 x64 PC with a Direct3D 12 GPU.
 - Your own extracted files from the [supported Xbox 360 game revision](docs/INSTALL.md#supported-game-version).
 - A controller. USB DualSense input works directly without DS4Windows; broader controller compatibility is still being tested.
-- The development tools listed in the build guide until a player download is available.
+
+Use the named Windows ZIP under **Releases**. GitHub's **Code → Download ZIP** and the automatically generated **Source code** archives are for developers; they do not contain the player executable.
 
 Original game files are required and are not included or downloaded by this project. An ISO or compressed archive must be extracted before import.
 
@@ -27,7 +32,7 @@ Original game files are required and are not included or downloaded by this proj
 
 Use **Launch Skate 2.cmd** for the default **2× quality / unlimited FPS** profile. For lower GPU load, use **Launch Skate 2 - 1x Performance.cmd**. Performance depends on hardware and scene complexity.
 
-Gameplay coverage currently includes Free Skate, the opening campaign, replay, save/reload, and USB DualSense on one Windows PC. Full campaign completion and broader hardware compatibility remain in progress. See [known issues and roadmap](docs/KNOWN_ISSUES.md) before playing.
+Testing includes Free Skate, campaign progression, instant replay, save/reload, Alt-Tab, direct USB DualSense input, and player-package relaunch. An approximately hour-long play session progressed further through the campaign without reported glitches. These results come from one Windows PC; full campaign completion and broader hardware compatibility have not been verified. See [release notes](docs/RELEASE_NOTES.md) and [known issues](docs/KNOWN_ISSUES.md).
 
 ## Guides
 
@@ -41,7 +46,7 @@ Gameplay coverage currently includes Free Skate, the opening campaign, replay, s
 
 ## Reporting a problem
 
-Open an [issue](https://github.com/christianortel/skate2-recompile-pc/issues) with the build or commit, Windows version, GPU and driver, controller, launcher used, game mode/location, and steps to reproduce. Include the error message when available. Remove personal paths from logs before sharing; do not upload game files or saves.
+Found a glitch, crash, or installation problem? **[Submit a bug report](https://github.com/christianortel/skate2-recompile-pc/issues/new/choose)** so we can investigate. The form asks for the version, hardware, launcher, location, and steps to reproduce. Screenshots and short clips help. Remove personal paths from logs before sharing; do not upload game files or saves.
 
 ## License and credits
 

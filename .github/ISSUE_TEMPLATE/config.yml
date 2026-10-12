@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Installation and troubleshooting
+    url: https://github.com/christianortel/skate2-recompile-pc/blob/main/docs/INSTALL.md
+    about: Game-file import, controls, audio, saves, and common startup issues.
+  - name: Known issues and roadmap
+    url: https://github.com/christianortel/skate2-recompile-pc/blob/main/docs/KNOWN_ISSUES.md
+    about: Check current compatibility limits and planned improvements.

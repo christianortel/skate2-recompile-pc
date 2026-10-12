@@ -1,0 +1,56 @@
+name: Bug report
+description: Report a crash, visual issue, controller problem, or other unexpected behavior.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Skate 2 PC. Include enough detail to reproduce the problem.
+        Do not upload game files, personal saves, or crash dumps. Review logs for personal paths before attaching them.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Release version or source commit; include whether you used the Windows ZIP or built from source.
+      placeholder: v0.1.0 Windows ZIP
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected instead. Include any visible error message.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include the game mode, location or mission, and whether it happens every time.
+    validations:
+      required: true
+  - type: textarea
+    id: system
+    attributes:
+      label: PC and controller
+      description: Windows version, CPU, GPU and driver version, RAM, controller model, and USB/Bluetooth connection.
+    validations:
+      required: true
+  - type: dropdown
+    id: launcher
+    attributes:
+      label: Launcher
+      options:
+        - Launch Skate 2.cmd (default 2x / unlimited)
+        - 1x Performance
+        - 2x Quality or Unlocked FPS
+        - 4x Quality
+        - 60 FPS
+        - Custom command or direct executable
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Additional details
+      description: Attach an image, short video, or sanitized log if useful. If you tried the 1x Performance launcher, describe whether it changed the result.

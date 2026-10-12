@@ -1,0 +1,319 @@
+Source: thirdparty/sdl3/src/libm/e_atan2.c (byte offset 27, 390 bytes)
+
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+
+Source: thirdparty/sdl3/src/libm/s_isnanf.c (byte offset 27, 520 bytes)
+
+/* s_isnanf.c -- float version of s_isnan.c.
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ */
+
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+
+Source: thirdparty/sdl3/src/libm/s_isinf.c (byte offset 27, 148 bytes)
+
+/*
+ * Written by J.T. Conklin <jtc@netbsd.org>.
+ * Changed to return -1 for -Inf by Ulrich Drepper <drepper@cygnus.com>.
+ * Public domain.
+ */
+
+
+Source: thirdparty/sdl3/src/libm/s_isinff.c (byte offset 27, 74 bytes)
+
+/*
+ * Written by J.T. Conklin <jtc@netbsd.org>.
+ * Public domain.
+ */
+
+
+Source: thirdparty/sdl3/src/stdlib/SDL_qsort.c (byte offset 3579, 952 bytes)
+
+/* Copyright (c) 1998-2021 Gareth McCaughan
+ *
+ * This software is provided 'as-is', without any express or implied
+ * warranty. In no event will the authors be held liable for any
+ * damages arising from the use of this software.
+ *
+ * Permission is granted to anyone to use this software for any purpose,
+ * including commercial applications, and to alter it and redistribute it
+ * freely, subject to the following restrictions:
+ *
+ * 1. The origin of this software must not be misrepresented;
+ *    you must not claim that you wrote the original software.
+ *    If you use this software in a product, an acknowledgment
+ *    in the product documentation would be appreciated but
+ *    is not required.
+ *
+ * 2. Altered source versions must be plainly marked as such,
+ *    and must not be misrepresented as being the original software.
+ *
+ * 3. This notice may not be removed or altered from any source
+ *    distribution.
+ */
+
+
+Source: thirdparty/sdl3/src/joystick/controller_type.c (byte offset 0, 903 bytes)
+
+/*
+  Copyright (C) Valve Corporation
+
+  This software is provided 'as-is', without any express or implied
+  warranty.  In no event will the authors be held liable for any damages
+  arising from the use of this software.
+
+  Permission is granted to anyone to use this software for any purpose,
+  including commercial applications, and to alter it and redistribute it
+  freely, subject to the following restrictions:
+
+  1. The origin of this software must not be misrepresented; you must not
+     claim that you wrote the original software. If you use this software
+     in a product, an acknowledgment in the product documentation would be
+     appreciated but is not required.
+  2. Altered source versions must be plainly marked as such, and must not be
+     misrepresented as being the original software.
+  3. This notice may not be removed or altered from any source distribution.
+*/
+
+Source: thirdparty/sdl3/src/video/SDL_rotate.c (byte offset 0, 1094 bytes)
+
+/*
+
+SDL_rotate.c: rotates 32bit or 8bit surfaces
+
+Shamelessly stolen from SDL_gfx by Andreas Schiffler. Original copyright follows:
+
+Copyright (C) 2001-2011  Andreas Schiffler
+
+This software is provided 'as-is', without any express or implied
+warranty. In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+   1. The origin of this software must not be misrepresented; you must not
+   claim that you wrote the original software. If you use this software
+   in a product, an acknowledgment in the product documentation would be
+   appreciated but is not required.
+
+   2. Altered source versions must be plainly marked as such, and must not be
+   misrepresented as being the original software.
+
+   3. This notice may not be removed or altered from any source
+   distribution.
+
+Andreas Schiffler -- aschiffler at ferzkopp dot net
+
+*/
+
+Source: thirdparty/sdl3/src/joystick/hidapi/SDL_hidapi_lg4ff.c (byte offset 0, 1083 bytes)
+
+/*
+  Simple DirectMedia Layer
+  Copyright (C) 2025 Simon Wood <simon@mungewell.org>
+  Copyright (C) 2025 Michal Malý <madcatxster@devoid-pointer.net>
+  Copyright (C) 2025 Katharine Chui <katharine.chui@gmail.com>
+
+  This software is provided 'as-is', without any express or implied
+  warranty.  In no event will the authors be held liable for any damages
+  arising from the use of this software.
+
+  Permission is granted to anyone to use this software for any purpose,
+  including commercial applications, and to alter it and redistribute it
+  freely, subject to the following restrictions:
+
+  1. The origin of this software must not be misrepresented; you must not
+     claim that you wrote the original software. If you use this software
+     in a product, an acknowledgment in the product documentation would be
+     appreciated but is not required.
+  2. Altered source versions must be plainly marked as such, and must not be
+     misrepresented as being the original software.
+  3. This notice may not be removed or altered from any source distribution.
+*/
+
+Source: thirdparty/sdl3/src/joystick/hidapi/SDL_hidapi_sinput.c (byte offset 0, 968 bytes)
+
+/*
+  Simple DirectMedia Layer
+  Copyright (C) 2025 Mitchell Cairns <mitch.cairns@handheldlegend.com>
+
+  This software is provided 'as-is', without any express or implied
+  warranty.  In no event will the authors be held liable for any damages
+  arising from the use of this software.
+
+  Permission is granted to anyone to use this software for any purpose,
+  including commercial applications, and to alter it and redistribute it
+  freely, subject to the following restrictions:
+
+  1. The origin of this software must not be misrepresented; you must not
+     claim that you wrote the original software. If you use this software
+     in a product, an acknowledgment in the product documentation would be
+     appreciated but is not required.
+  2. Altered source versions must be plainly marked as such, and must not be
+     misrepresented as being the original software.
+  3. This notice may not be removed or altered from any source distribution.
+*/
+
+Source: thirdparty/sdl3/src/joystick/hidapi/SDL_hidapi_steam_triton.c (byte offset 0, 952 bytes)
+
+/*
+  Simple DirectMedia Layer
+  Copyright (C) 2023 Max Maisel <max.maisel@posteo.de>
+
+  This software is provided 'as-is', without any express or implied
+  warranty.  In no event will the authors be held liable for any damages
+  arising from the use of this software.
+
+  Permission is granted to anyone to use this software for any purpose,
+  including commercial applications, and to alter it and redistribute it
+  freely, subject to the following restrictions:
+
+  1. The origin of this software must not be misrepresented; you must not
+     claim that you wrote the original software. If you use this software
+     in a product, an acknowledgment in the product documentation would be
+     appreciated but is not required.
+  2. Altered source versions must be plainly marked as such, and must not be
+     misrepresented as being the original software.
+  3. This notice may not be removed or altered from any source distribution.
+*/
+
+Source: thirdparty/sdl3/src/joystick/hidapi/SDL_hidapi_steamdeck.c (byte offset 0, 952 bytes)
+
+/*
+  Simple DirectMedia Layer
+  Copyright (C) 2023 Max Maisel <max.maisel@posteo.de>
+
+  This software is provided 'as-is', without any express or implied
+  warranty.  In no event will the authors be held liable for any damages
+  arising from the use of this software.
+
+  Permission is granted to anyone to use this software for any purpose,
+  including commercial applications, and to alter it and redistribute it
+  freely, subject to the following restrictions:
+
+  1. The origin of this software must not be misrepresented; you must not
+     claim that you wrote the original software. If you use this software
+     in a product, an acknowledgment in the product documentation would be
+     appreciated but is not required.
+  2. Altered source versions must be plainly marked as such, and must not be
+     misrepresented as being the original software.
+  3. This notice may not be removed or altered from any source distribution.
+*/
+
+Source: thirdparty/sdl3/src/joystick/hidapi/SDL_hidapi_zuiki.c (byte offset 0, 990 bytes)
+
+/*
+  Simple DirectMedia Layer
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 2025 Zuiki Inc.
+
+  This software is provided 'as-is', without any express or implied
+  warranty.  In no event will the authors be held liable for any damages
+  arising from the use of this software.
+
+  Permission is granted to anyone to use this software for any purpose,
+  including commercial applications, and to alter it and redistribute it
+  freely, subject to the following restrictions:
+
+  1. The origin of this software must not be misrepresented; you must not
+     claim that you wrote the original software. If you use this software
+     in a product, an acknowledgment in the product documentation would be
+     appreciated but is not required.
+  2. Altered source versions must be plainly marked as such, and must not be
+     misrepresented as being the original software.
+  3. This notice may not be removed or altered from any source distribution.
+*/
+
+Source: thirdparty/sdl3/src/haptic/hidapi/SDL_hidapihaptic.c (byte offset 0, 960 bytes)
+
+/*
+  Simple DirectMedia Layer
+  Copyright (C) 2025 Katharine Chui <katharine.chui@gmail.com>
+
+  This software is provided 'as-is', without any express or implied
+  warranty.  In no event will the authors be held liable for any damages
+  arising from the use of this software.
+
+  Permission is granted to anyone to use this software for any purpose,
+  including commercial applications, and to alter it and redistribute it
+  freely, subject to the following restrictions:
+
+  1. The origin of this software must not be misrepresented; you must not
+     claim that you wrote the original software. If you use this software
+     in a product, an acknowledgment in the product documentation would be
+     appreciated but is not required.
+  2. Altered source versions must be plainly marked as such, and must not be
+     misrepresented as being the original software.
+  3. This notice may not be removed or altered from any source distribution.
+*/
+
+Source: thirdparty/sdl3/src/haptic/hidapi/SDL_hidapihaptic_lg4ff.c (byte offset 0, 1143 bytes)
+
+/*
+  Simple DirectMedia Layer
+  Copyright (C) 2025 Simon Wood <simon@mungewell.org>
+  Copyright (C) 2025 Michal Malý <madcatxster@devoid-pointer.net>
+  Copyright (C) 2025 Bernat Arlandis <berarma@hotmail.com>
+  Copyright (C) 2025 Katharine Chui <katharine.chui@gmail.com>
+
+  This software is provided 'as-is', without any express or implied
+  warranty.  In no event will the authors be held liable for any damages
+  arising from the use of this software.
+
+  Permission is granted to anyone to use this software for any purpose,
+  including commercial applications, and to alter it and redistribute it
+  freely, subject to the following restrictions:
+
+  1. The origin of this software must not be misrepresented; you must not
+     claim that you wrote the original software. If you use this software
+     in a product, an acknowledgment in the product documentation would be
+     appreciated but is not required.
+  2. Altered source versions must be plainly marked as such, and must not be
+     misrepresented as being the original software.
+  3. This notice may not be removed or altered from any source distribution.
+*/
+
+Source: thirdparty/sdl3/src/stdlib/SDL_strtokr.c (byte offset 1142, 685 bytes)
+
+/*
+ * Adapted from _PDCLIB_strtok() of PDClib library at
+ * https://github.com/DevSolar/pdclib.git
+ *
+ * The code was under CC0 license:
+ * https://creativecommons.org/publicdomain/zero/1.0/legalcode :
+ *
+ *                        No Copyright
+ *
+ * The person who associated a work with this deed has dedicated the
+ * work to the public domain by waiving all of his or her rights to
+ * the work worldwide under copyright law, including all related and
+ * neighboring rights, to the extent allowed by law.
+ *
+ * You can copy, modify, distribute and perform the work, even for
+ * commercial purposes, all without asking permission. See Other
+ * Information below.
+ */
+
+

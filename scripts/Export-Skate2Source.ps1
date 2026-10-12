@@ -12,20 +12,22 @@ $exportRoot = Join-Path $workspace 'source-exports'
 # git ls-files, or a wildcard: this workspace also contains private game data.
 $allowlist = @(
     '.gitignore', '.gitattributes', 'README.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md',
+    '.github/ISSUE_TEMPLATE/bug_report.yml', '.github/ISSUE_TEMPLATE/config.yml',
     'Import Game Files.cmd', 'Launch Skate 2.cmd', 'Launch Skate 2 - 60 FPS.cmd',
     'Launch Skate 2 - Unlocked FPS.cmd', 'Launch Skate 2 - 2x Quality.cmd', 'Launch Skate 2 - 4x Quality.cmd',
     'Launch Skate 2 - 1x Performance.cmd',
     'docs/INSTALL.md', 'docs/BUILD.md', 'docs/KNOWN_ISSUES.md', 'docs/HOW_IT_WORKS.md',
-    'docs/DISPLAY.md', 'docs/RELEASE_CHECKLIST.md',
+    'docs/DISPLAY.md', 'docs/RELEASE_CHECKLIST.md', 'docs/RELEASE_NOTES.md', 'docs/RUNTIME_REBUILD.md',
     'scripts/Export-Skate2Source.ps1', 'scripts/Bootstrap-Skate2Sdk.ps1',
     'scripts/Build-Skate2.ps1', 'scripts/Import-Skate2Data.ps1',
-    'scripts/Launch-Skate2.ps1', 'scripts/Package-Skate2.ps1',
+    'scripts/Launch-Skate2.ps1', 'scripts/Check-Skate2Runtime.ps1', 'scripts/Package-Skate2.ps1',
     'scripts/Capture-Skate2Load.ps1', 'scripts/analyze_frame_times.py',
     'scripts/tests/Test-FrameAnalysis.py', 'tools/Enter-BuildEnvironment.ps1',
     'scripts/tests/Test-BuildInvocation.ps1',
     'scripts/tests/Test-PlayerLaunchers.ps1',
     'scripts/tests/Test-CvarInit.ps1', 'scripts/tests/cvar_init_main.cpp',
     'scripts/Collect-Skate2Notices.ps1',
+    'scripts/Package-Skate2RuntimeSource.ps1', 'scripts/Rebuild-Skate2Runtime.ps1', 'scripts/Test-Skate2RuntimeABI.ps1',
     'skate2/CMakeLists.txt', 'skate2/CMakePresets.json', 'skate2/skate2_manifest.toml',
     'skate2/src/main.cpp', 'skate2/src/skate2_app.h',
     'skate2/src/crash_diagnostics.cpp', 'skate2/src/crash_diagnostics.h',
@@ -61,7 +63,12 @@ $allowlist = @(
     'licenses/FFmpeg-IJG-jfdctfst-NOTICE.txt', 'licenses/FFmpeg-IJG-jfdctint-NOTICE.txt',
     'licenses/FFmpeg-IJG-jrevdct-NOTICE.txt', 'licenses/Crypto-DES-LICENSE.txt',
     'licenses/TinySHA1-LICENSE.txt', 'licenses/Rijndael-NOTICE.txt',
-    'licenses/SHA256-NOTICE.txt', 'licenses/DXBC-Checksum-NOTICE.txt'
+    'licenses/SHA256-NOTICE.txt', 'licenses/DXBC-Checksum-NOTICE.txt',
+    'licenses/SHA256-LICENSE.txt', 'licenses/PE-format-NOTICE.txt',
+    'licenses/aes128-NOTICE.txt', 'licenses/FFmpeg-avsscanf-LICENSE.txt',
+    'licenses/FFmpeg-Selected-Source-NOTICES.txt', 'licenses/ProggyFonts-LICENSE.txt',
+    'licenses/SDL3-yuv2rgb-LICENSE.txt', 'licenses/SDL3-Selected-Source-NOTICES.txt',
+    'licenses/SIMDe-Selected-Header-NOTICES.txt'
 )
 function Assert-OrdinaryPath([string]$Path) {
     for ($current = [IO.Path]::GetFullPath($Path); $current;) {

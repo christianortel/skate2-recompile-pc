@@ -1,12 +1,12 @@
 # Installation and controls
 
-**A public player download is not available yet.** To play from the current repository, use [Build from source](BUILD.md). The package instructions below apply to a compiled Windows player package containing `skate2.exe`.
+Download **Skate2-PC-v0.1.0-Windows-x64.zip** from [Releases](https://github.com/christianortel/skate2-recompile-pc/releases/latest). It contains the compiled game application, runtime, and launchers. You do not need to compile anything to play. [Build from source](BUILD.md) is a separate guide for contributors.
 
 ## What you need
 
 | Item | Requirement |
 | --- | --- |
-| Operating system | Windows x64; Linux, macOS, and Windows on ARM are not supported by this build |
+| Operating system | Windows 10/11 x64; Linux, macOS, and Windows on ARM are not supported by this build |
 | Processor | Intel/AMD processor supporting x86-64-v2, the SDK's build target |
 | Graphics | Direct3D 12 GPU and driver; minimum GPU/VRAM requirements have not been established |
 | Input | A controller; USB DualSense has direct input support without DS4Windows |
@@ -14,7 +14,7 @@
 | Storage | Space for a second copy of the extracted game, about 6.8 GB for the supported file set, plus saves and cache |
 | Launcher | Windows PowerShell 5.1, included with Windows 10/11 |
 
-The player package includes its required Visual C++ runtime DLLs. Build tools are needed only when compiling from source. See [compatibility limits](KNOWN_ISSUES.md) for outstanding hardware testing.
+The launcher checks for **Microsoft Visual C++ x64 v14 Runtime 14.44.35211.0 or later**. If it is missing or outdated, open the included **Install Visual C++ Runtime.url** or use [Microsoft's x64 installer](https://aka.ms/vc14/vc_redist.x64.exe), complete installation, and launch again. This is a runtime prerequisite, not a compiler. [Microsoft's runtime information](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170) explains supported versions. See [compatibility limits](KNOWN_ISSUES.md) for hardware coverage.
 
 ## Supported game version
 
@@ -70,7 +70,7 @@ In a source checkout, saves and settings live under `skate2/`. In a player packa
 
 | Problem | Next step |
 | --- | --- |
-| No `skate2.exe` in the download | You have the source archive. Follow [BUILD.md](BUILD.md). |
+| No `skate2.exe` in the download | Download the named Windows player ZIP from [Releases](https://github.com/christianortel/skate2-recompile-pc/releases/latest), not a Source code archive. |
 | Game data is missing | Run `Import Game Files.cmd` and select the folder containing `default.xex` and `data`. |
 | Unsupported executable revision | Compare the SHA-256 above. Do not rename another executable or bypass the revision check. |
 | Import says `game` already exists | If a previous import completed, skip import and launch. Check an incomplete installation before changing any files. |
@@ -78,7 +78,8 @@ In a source checkout, saves and settings live under `skate2/`. In a player packa
 | Low performance or visual corruption | Restart with **Launch Skate 2 - 1x Performance.cmd**. If it persists, include the location and launcher in an issue report. |
 | No controller input | Check the cable/connection and try direct USB input with DS4Windows closed. Reconnect and wireless behavior are still under testing. |
 | Sound goes to the controller | Select the intended output in **F4 → Audio → Output device**, choose **Save to config**, and restart. |
-| A DLL is missing | Re-extract the complete player package. Do not download individual DLLs from unrelated sites. |
+| Microsoft Visual C++ Runtime is missing/outdated, or `MSVCP140`/`VCRUNTIME140` is missing | Install or repair the [official Microsoft x64 runtime](https://aka.ms/vc14/vc_redist.x64.exe), then launch again. |
+| Another DLL is missing | Re-extract the complete player package. Do not download individual DLLs from unrelated sites. |
 | PowerShell policy error | Use the supplied CMD launcher. It applies its script setting only to the child process; organization-enforced restrictions may still prevent launch. |
 
 For unresolved problems, [open an issue](https://github.com/christianortel/skate2-recompile-pc/issues) using the [reporting checklist](../README.md#reporting-a-problem).

@@ -2,6 +2,8 @@
 
 These instructions build the Windows x64 version, including its patched ReXGlue runtime. A fresh SDK build, game-code generation, and application compilation have completed in an isolated directory on the development PC. Running the resulting build on a clean Windows installation remains a separate validation step.
 
+**Only looking to play?** Use the compiled Windows ZIP and [installation guide](INSTALL.md). This build guide is for contributors.
+
 ## 1. Install the build tools
 
 Install the following before cloning the project:
@@ -89,7 +91,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Export-Skate2S
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Export-Skate2Source.ps1
 ```
 
-Packaging writes a new folder under `packages`, verifies native dependencies and collected notices, and excludes game files and existing personal data by default. `-CrtDirectory` can select the official installed x64 Visual C++ redistributable directory. `-BuildDirectory` can select an isolated application build whose runtime DLLs match this checkout's installed SDK.
+Packaging writes a new folder under `packages`, verifies native dependencies and collected notices, and excludes game files and existing personal data by default. Add `-ReleaseVersion 0.1.0` to stage a versioned player package. Release packages exclude Microsoft CRT DLLs and require the official x64 runtime to be installed separately. `-CrtDirectory` is for local development packages only. `-BuildDirectory` can select an isolated application build whose runtime DLLs match this checkout's installed SDK.
 
 Source export writes an explicit allowlist to a new folder under `source-exports`. Original game files, generated game code, binaries, tools, logs, saves, and caches are excluded. `-IncludeGameData` on the packager is for local testing only; packages created with it must not be uploaded.
 

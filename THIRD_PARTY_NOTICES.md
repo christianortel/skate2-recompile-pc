@@ -4,11 +4,13 @@ This project uses [ReXGlue SDK](https://github.com/rexglue/rexglue-sdk) at revis
 
 ## Dependency notices
 
-The `licenses` directory contains 36 collected upstream notice files. [NOTICE-INDEX.json](licenses/NOTICE-INDEX.json) records their sources, hashes, and remaining review items. `scripts/Collect-Skate2Notices.ps1` verifies the collection against local SDK sources and recorded provenance.
+The `licenses` directory contains 45 upstream notice files, including selected source-file attributions and embedded font licenses. [NOTICE-INDEX.json](licenses/NOTICE-INDEX.json) records their sources, hashes, and distribution requirements. `scripts/Collect-Skate2Notices.ps1` verifies the collection against local SDK sources and recorded provenance.
 
 This software is based in part on the work of the Independent JPEG Group. The DXBC checksum implementation is derived from the RSA Data Security, Inc. MD5 Message Digest Algorithm.
 
-FFmpeg and libmspack are statically linked into the runtime. Their corresponding source and rebuild/relink materials still need preparation and verification for a binary release. The inventory also tracks outstanding provenance, nested notices, and Microsoft redistributable terms. These items are part of the [release checklist](docs/RELEASE_CHECKLIST.md).
+FFmpeg and libmspack are statically linked into `rexruntime.dll`. The matching **Runtime-Source** ZIP on [Releases](https://github.com/christianortel/skate2-recompile-pc/releases/latest) supplies their source, the containing runtime's source, build configuration, local modifications, and a DLL rebuild/relink procedure. See [Runtime rebuild instructions](docs/RUNTIME_REBUILD.md). Runtime replacement does not require rebuilding the game executable when its public interfaces remain compatible.
+
+The Microsoft Visual C++ runtime is a separately installed prerequisite. The player release does not redistribute Microsoft CRT DLLs or the compiler toolchain.
 
 ## License scope
 
