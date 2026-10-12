@@ -10,7 +10,8 @@ This checklist tracks the first downloadable Windows player release. Source publ
 - [x] Stage the executable, required runtime DLLs, launchers, guides, and notices without game data or existing saves.
 - [x] Verify packaged startup flags, native DLL loading, intro rendering, and direct USB DualSense detection.
 - [ ] Test gameplay with the freshly rebuilt SDK binaries; package startup checks used the established runtime binaries.
-- [ ] Complete Free Skate, quit/relaunch, and save checks in the isolated player package.
+- [x] Check Free Skate performance, clean graphics, and quit/relaunch in the isolated player package on the development PC.
+- [ ] Verify save persistence and migration in the isolated player package.
 - [ ] Validate installation and launch on a clean Windows PC without build tools.
 - [ ] Reproduce the source-build workflow on another PC.
 
