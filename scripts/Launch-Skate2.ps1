@@ -80,7 +80,10 @@ try {
         $performancePath = Join-Path $performanceRoot $performanceName
         if (-not $CheckOnly) { [IO.Directory]::CreateDirectory($performanceRoot) | Out-Null }
         $arguments += "--perf_log_csv=$performancePath"
-    } else { $arguments += '--perf_log_csv=' }
+    }
+    # Omit the disabled capture option: this CLI parser rejects a trailing
+    # empty --perf_log_csv= before applying ordinary startup flags. The app
+    # already ignores saved capture paths unless explicitly passed on the CLI.
     if ($PSBoundParameters.ContainsKey('Adapter')) { $arguments += "--d3d12_adapter=$Adapter" }
     if ($Diagnostics) { $arguments += @('--log_level=debug', '--log_flush_interval=1') }
     if ($CheckOnly) {

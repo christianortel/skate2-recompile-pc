@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Destination,
+    [string]$BuildDirectory,
     [switch]$IncludeGameData,
     [switch]$SkipGameData,
     [string]$CrtDirectory,
@@ -13,6 +14,10 @@ $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
 $packageRoot = Join-Path $workspace 'packages'
 $buildRoot = Join-Path $workspace 'skate2\out\build\win-amd64-release'
+if ($BuildDirectory) {
+    $buildRoot = if ([IO.Path]::IsPathRooted($BuildDirectory)) { $BuildDirectory } else { Join-Path $workspace $BuildDirectory }
+    $buildRoot = [IO.Path]::GetFullPath($buildRoot)
+}
 $sdkRoot = Join-Path $workspace 'tools\rexglue-sdk-source'
 $sdkBin = Join-Path $sdkRoot 'out\install\win-amd64\bin'
 $readobj = Join-Path $workspace 'tools\llvm-20.1.8\bin\llvm-readobj.exe'
@@ -32,7 +37,7 @@ if (-not $CrtDirectory) {
 }
 $crtRoot = $CrtDirectory
 if (-not (Test-Path -LiteralPath $readobj)) {
-    $readobj = (Get-Command llvm-readobj -ErrorAction Stop).Source
+    $readobj = (Get-Command llvm-readobj -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
 }
 
 function Assert-RegularFile([string]$Path) {
@@ -68,6 +73,7 @@ if (-not $Destination.StartsWith($allowedPrefix, [StringComparison]::OrdinalIgno
     throw "Choose a fresh destination below $packageRoot. Packages remain local to this workspace."
 }
 Assert-OrdinaryAncestors $Destination
+Assert-OrdinaryAncestors $buildRoot
 if (Test-Path -LiteralPath $Destination) { throw "Destination already exists; choose a fresh folder: $Destination" }
 [void](Assert-RegularFile $readobj)
 
@@ -173,8 +179,27 @@ $supportFiles = @(
     [pscustomobject]@{ source = Join-Path $workspace 'docs\BUILD.md'; relative = 'docs\BUILD.md' },
     [pscustomobject]@{ source = Join-Path $workspace 'docs\RELEASE_CHECKLIST.md'; relative = 'docs\RELEASE_CHECKLIST.md' },
     [pscustomobject]@{ source = Join-Path $workspace 'THIRD_PARTY_NOTICES.md'; relative = 'THIRD_PARTY_NOTICES.md' },
-    [pscustomobject]@{ source = Join-Path $sdkRoot 'LICENSE'; relative = 'licenses\ReXGlue-LICENSE.txt' }
+    [pscustomobject]@{ source = Join-Path $workspace 'LICENSE'; relative = 'LICENSE' }
 )
+$noticeIndexPath = Join-Path $workspace 'licenses/NOTICE-INDEX.json'
+Assert-OrdinaryAncestors $noticeIndexPath
+[void](Assert-RegularFile $noticeIndexPath)
+$noticeIndex = Get-Content -LiteralPath $noticeIndexPath -Raw | ConvertFrom-Json
+if ($noticeIndex.SchemaVersion -ne 1 -or -not $noticeIndex.Files.Count -or
+    $noticeIndex.NoticeCount -ne $noticeIndex.Files.Count) { throw 'Invalid notice inventory. Run Collect-Skate2Notices.ps1 and review its output.' }
+$noticePaths = @{}
+foreach ($notice in $noticeIndex.Files) {
+    if ($notice.Path -notmatch '^licenses/[A-Za-z0-9_-][A-Za-z0-9_.-]*\.(txt|md)$' -or
+        $noticePaths.ContainsKey($notice.Path)) { throw 'Invalid or duplicate path in notice inventory.' }
+    $noticePaths[$notice.Path] = $true
+    $noticeSource = Join-Path $workspace $notice.Path
+    Assert-OrdinaryAncestors $noticeSource
+    $noticeFile = Assert-RegularFile $noticeSource
+    if ($noticeFile.Length -gt 2MB -or $noticeFile.Length -ne $notice.Bytes -or
+        (Get-FileHash -LiteralPath $noticeSource -Algorithm SHA256).Hash -ne $notice.SHA256) { throw "Notice differs from reviewed inventory: $($notice.Path)" }
+    $supportFiles += [pscustomobject]@{ source=$noticeSource; relative=$notice.Path }
+}
+$supportFiles += [pscustomobject]@{ source=$noticeIndexPath; relative='licenses/NOTICE-INDEX.json' }
 foreach ($file in $supportFiles) { [void](Assert-RegularFile $file.source) }
 $gameFiles = @()
 if ($includeGame) {

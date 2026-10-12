@@ -1,0 +1,458 @@
+{
+    "SchemaVersion":  1,
+    "Scope":  "Available notices for the inspected Windows x64 D3D12 runtime dependency set",
+    "CompleteComplianceReview":  false,
+    "NoticeCount":  34,
+    "Acknowledgments":  [
+                            "This software is based in part on the work of the Independent JPEG Group.",
+                            "The DXBC checksum implementation is derived from the RSA Data Security, Inc. MD5 Message Digest Algorithm."
+                        ],
+    "ModificationScope":  "The collector does not modify SDK sources. Review exact source changes and provenance with the final release source bundle.",
+    "Files":  [
+                  {
+                      "Component":  "ReXGlue and Xenia",
+                      "Path":  "licenses/ReXGlue-LICENSE.txt",
+                      "Terms":  "BSD-3-Clause",
+                      "Integration":  "Runtime DLL and GPU plugin",
+                      "Source":  "LICENSE",
+                      "SourceSHA256":  "8E065BE1DA2FF9A16B1F063D4636D8B67E6A654BB90583EA4332E66AC421BB18",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Entire upstream notice file bytes",
+                      "Bytes":  1659,
+                      "SHA256":  "8E065BE1DA2FF9A16B1F063D4636D8B67E6A654BB90583EA4332E66AC421BB18"
+                  },
+                  {
+                      "Component":  "SDL3",
+                      "Path":  "licenses/SDL3-LICENSE.txt",
+                      "Terms":  "Zlib",
+                      "Integration":  "Static library linked into rexruntime and the application",
+                      "Source":  "thirdparty/sdl3/LICENSE.txt",
+                      "SourceSHA256":  "F4C406CD23DF8E2EA3E8BB1AF62F15CB6B2439E4E5385828CF90301BAEA4D944",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Entire upstream notice file bytes",
+                      "Bytes":  902,
+                      "SHA256":  "F4C406CD23DF8E2EA3E8BB1AF62F15CB6B2439E4E5385828CF90301BAEA4D944"
+                  },
+                  {
+                      "Component":  "HIDAPI",
+                      "Path":  "licenses/HIDAPI-license-options.txt",
+                      "Terms":  "Upstream alternative-license explanation",
+                      "Integration":  "SDL3 HID controller support",
+                      "Source":  "thirdparty/sdl3/src/hidapi/LICENSE.txt",
+                      "SourceSHA256":  "ECE65294D852F2F32A291ED1C2B6CDDD57A5630E37626AA02C80CD62EED6F222",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Entire upstream notice file bytes",
+                      "Bytes":  543,
+                      "SHA256":  "ECE65294D852F2F32A291ED1C2B6CDDD57A5630E37626AA02C80CD62EED6F222"
+                  },
+                  {
+                      "Component":  "HIDAPI",
+                      "Path":  "licenses/HIDAPI-BSD-LICENSE.txt",
+                      "Terms":  "BSD-style option retained",
+                      "Integration":  "SDL3 HID controller support",
+                      "Source":  "thirdparty/sdl3/src/hidapi/LICENSE-bsd.txt",
+                      "SourceSHA256":  "B1A506483DE4FC32A73568370AA248BF6C5F820B5E2891CA3F29B8844EA6BF33",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Entire upstream notice file bytes",
+                      "Bytes":  1560,
+                      "SHA256":  "B1A506483DE4FC32A73568370AA248BF6C5F820B5E2891CA3F29B8844EA6BF33"
+                  },
+                  {
+                      "Component":  "HIDAPI Windows",
+                      "Path":  "licenses/HIDAPI-Windows-NOTICE.txt",
+                      "Terms":  "Copyright and alternative-license notice",
+                      "Integration":  "SDL3 HID controller support",
+                      "Source":  "thirdparty/sdl3/src/hidapi/windows/hid.c",
+                      "SourceSHA256":  "5F600AF50752BE4CE4152137FD79BB391C7074F52D2D59A0EE2EF332BACAD169",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Exact comment block bytes",
+                      "Bytes":  751,
+                      "SHA256":  "1EFC6EB03E97E9CD7EC6DC2081ACC3CDB3FFF92D5E2E41FC548AADF5A03486A2"
+                  },
+                  {
+                      "Component":  "fmt",
+                      "Path":  "licenses/fmt-LICENSE.txt",
+                      "Terms":  "MIT",
+                      "Integration":  "Static formatting library",
+                      "Source":  "thirdparty/fmt/LICENSE",
+                      "SourceSHA256":  "25B5DB04AA6070C12AC518B91CBD0A59725C050ECB091456E6EBC3D3EEB369CF",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Entire upstream notice file bytes",
+                      "Bytes":  1458,
+                      "SHA256":  "25B5DB04AA6070C12AC518B91CBD0A59725C050ECB091456E6EBC3D3EEB369CF"
+                  },
+                  {
+                      "Component":  "spdlog",
+                      "Path":  "licenses/spdlog-LICENSE.txt",
+                      "Terms":  "MIT and included third-party notices",
+                      "Integration":  "Static logging library",
+                      "Source":  "thirdparty/spdlog/LICENSE",
+                      "SourceSHA256":  "D8CFAAE20761042AC00DFF862A1A9F31A437CBE337EA9AA8C13285222B7086C5",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Entire upstream notice file bytes",
+                      "Bytes":  1348,
+                      "SHA256":  "D8CFAAE20761042AC00DFF862A1A9F31A437CBE337EA9AA8C13285222B7086C5"
+                  },
+                  {
+                      "Component":  "xxHash",
+                      "Path":  "licenses/xxHash-LICENSE.txt",
+                      "Terms":  "BSD-2-Clause",
+                      "Integration":  "Static hash library",
+                      "Source":  "thirdparty/xxHash/LICENSE",
+                      "SourceSHA256":  "6FFEDBC0F7878612D2B23589F1FF2AB15633E1DF7963A5D9FC750EC5500C7E7A",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Entire upstream notice file bytes",
+                      "Bytes":  1389,
+                      "SHA256":  "6FFEDBC0F7878612D2B23589F1FF2AB15633E1DF7963A5D9FC750EC5500C7E7A"
+                  },
+                  {
+                      "Component":  "aes_128",
+                      "Path":  "licenses/aes128-LICENSE.txt",
+                      "Terms":  "MIT",
+                      "Integration":  "Static library for kernel crypto routines",
+                      "Source":  "thirdparty/aes_128/LICENSE",
+                      "SourceSHA256":  "756965BE50AFDE53FE51D47DA4FE180F82FDFAA5E72ED591D84D05DF5BEF4E3C",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Entire upstream notice file bytes",
+                      "Bytes":  1064,
+                      "SHA256":  "756965BE50AFDE53FE51D47DA4FE180F82FDFAA5E72ED591D84D05DF5BEF4E3C"
+                  },
+                  {
+                      "Component":  "o1heap",
+                      "Path":  "licenses/o1heap-LICENSE.txt",
+                      "Terms":  "MIT",
+                      "Integration":  "Static kernel heap allocator",
+                      "Source":  "thirdparty/o1heap/LICENSE",
+                      "SourceSHA256":  "5CE68DE7CE0F15F934746A70EAD3CF9999ED902443554648801E4230638C503A",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Entire upstream notice file bytes",
+                      "Bytes":  1092,
+                      "SHA256":  "5CE68DE7CE0F15F934746A70EAD3CF9999ED902443554648801E4230638C503A"
+                  },
+                  {
+                      "Component":  "SIMDe",
+                      "Path":  "licenses/SIMDe-COPYING.txt",
+                      "Terms":  "MIT and included notices",
+                      "Integration":  "SIMD headers used by runtime and generated application",
+                      "Source":  "thirdparty/simde/COPYING",
+                      "SourceSHA256":  "83E48417DD53D380432CA08C1AABC35AF5A8B8D4CAC037F066510D0BCDA8F2C0",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Entire upstream notice file bytes",
+                      "Bytes":  1097,
+                      "SHA256":  "83E48417DD53D380432CA08C1AABC35AF5A8B8D4CAC037F066510D0BCDA8F2C0"
+                  },
+                  {
+                      "Component":  "toml++",
+                      "Path":  "licenses/tomlplusplus-LICENSE.txt",
+                      "Terms":  "MIT",
+                      "Integration":  "Configuration parsing headers",
+                      "Source":  "thirdparty/tomlplusplus/LICENSE",
+                      "SourceSHA256":  "529BC3900A9571E49DB285B0DF432397E70B881CC3BF48DE6667AE74FF4B06D8",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Entire upstream notice file bytes",
+                      "Bytes":  1094,
+                      "SHA256":  "529BC3900A9571E49DB285B0DF432397E70B881CC3BF48DE6667AE74FF4B06D8"
+                  },
+                  {
+                      "Component":  "CLI11",
+                      "Path":  "licenses/CLI11-LICENSE.txt",
+                      "Terms":  "BSD-3-Clause",
+                      "Integration":  "Runtime cvar argument parsing headers",
+                      "Source":  "thirdparty/cli11/LICENSE",
+                      "SourceSHA256":  "551084A174F9CF71CB520C69F88271D4B2E8B61F5AF2F5E18EAB74397B0CAC8A",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Entire upstream notice file bytes",
+                      "Bytes":  1611,
+                      "SHA256":  "551084A174F9CF71CB520C69F88271D4B2E8B61F5AF2F5E18EAB74397B0CAC8A"
+                  },
+                  {
+                      "Component":  "UTF8-CPP",
+                      "Path":  "licenses/UTF8CPP-LICENSE.txt",
+                      "Terms":  "Boost-1.0",
+                      "Integration":  "Runtime text conversion headers",
+                      "Source":  "thirdparty/utfcpp/LICENSE",
+                      "SourceSHA256":  "BEB8E42E9D6B4284E03304D05A81A0755200A965FC8D0A5E0AEA1E84CF805D6E",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Entire upstream notice file bytes",
+                      "Bytes":  1361,
+                      "SHA256":  "BEB8E42E9D6B4284E03304D05A81A0755200A965FC8D0A5E0AEA1E84CF805D6E"
+                  },
+                  {
+                      "Component":  "Dear ImGui",
+                      "Path":  "licenses/ImGui-LICENSE.txt",
+                      "Terms":  "MIT",
+                      "Integration":  "UI object files linked into rexruntime",
+                      "Source":  "thirdparty/imgui/LICENSE.txt",
+                      "SourceSHA256":  "55E058CC5899E6077A819AD1005D6D1F4528F65AE100795C9692F9FA6525A8CE",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Entire upstream notice file bytes",
+                      "Bytes":  1104,
+                      "SHA256":  "55E058CC5899E6077A819AD1005D6D1F4528F65AE100795C9692F9FA6525A8CE"
+                  },
+                  {
+                      "Component":  "ImGui stb_rectpack",
+                      "Path":  "licenses/ImGui-stb_rectpack-LICENSE.txt",
+                      "Terms":  "MIT or public-domain alternatives",
+                      "Integration":  "ImGui internal font packing",
+                      "Source":  "thirdparty/imgui/imstb_rectpack.h",
+                      "SourceSHA256":  "BB53504995E983D54B1AE06EA727F0B39647E5E205B4BF7DA01343953974951C",
+                      "SourceByteOffset":  18256,
+                      "Extraction":  "Exact comment block bytes",
+                      "Bytes":  2713,
+                      "SHA256":  "B9BD332B6EEEA331B3ACEE4EE303D0EC0C5B33E3FEE9373145921A5D08313EBB"
+                  },
+                  {
+                      "Component":  "ImGui stb_truetype",
+                      "Path":  "licenses/ImGui-stb_truetype-LICENSE.txt",
+                      "Terms":  "MIT or public-domain alternatives",
+                      "Integration":  "ImGui font rasterization",
+                      "Source":  "thirdparty/imgui/imstb_truetype.h",
+                      "SourceSHA256":  "37AA1D602706262BF94DA2F83EFAA8175EBC2202EDE13DA96B692FBCF8B4427B",
+                      "SourceByteOffset":  201873,
+                      "Extraction":  "Exact comment block bytes",
+                      "Bytes":  2713,
+                      "SHA256":  "B9BD332B6EEEA331B3ACEE4EE303D0EC0C5B33E3FEE9373145921A5D08313EBB"
+                  },
+                  {
+                      "Component":  "ImGui stb_textedit",
+                      "Path":  "licenses/ImGui-stb_textedit-LICENSE.txt",
+                      "Terms":  "MIT or public-domain alternatives",
+                      "Integration":  "ImGui text editing",
+                      "Source":  "thirdparty/imgui/imstb_textedit.h",
+                      "SourceSHA256":  "24A8DB00354AF8F4057417841635A1B6DFD8986F1608336FE6F10D6FD9769AAA",
+                      "SourceByteOffset":  58923,
+                      "Extraction":  "Exact comment block bytes",
+                      "Bytes":  2713,
+                      "SHA256":  "B9BD332B6EEEA331B3ACEE4EE303D0EC0C5B33E3FEE9373145921A5D08313EBB"
+                  },
+                  {
+                      "Component":  "stb_image",
+                      "Path":  "licenses/stb_image-LICENSE.txt",
+                      "Terms":  "MIT or public-domain alternatives",
+                      "Integration":  "Runtime image_decode.cpp",
+                      "Source":  "thirdparty/stb/stb_image.h",
+                      "SourceSHA256":  "C54B15A689E6A1F32C75E2EC23AFA442E3E0E37E894B73C1974D08679B20DD5C",
+                      "SourceByteOffset":  280174,
+                      "Extraction":  "Exact comment block bytes",
+                      "Bytes":  2673,
+                      "SHA256":  "10ED5A55912965C9846C947486FC42A537C6E7F92DBABD68BF26963DA320E46D"
+                  },
+                  {
+                      "Component":  "RenderDoc API",
+                      "Path":  "licenses/RenderDoc-API-LICENSE.txt",
+                      "Terms":  "MIT",
+                      "Integration":  "API header; RenderDoc DLL is not bundled",
+                      "Source":  "thirdparty/renderdoc/renderdoc_app.h",
+                      "SourceSHA256":  "D66CDAF5FB0893678382746CF5D3F47073884153A8D0C6957B2D245994F0315B",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Exact comment block bytes",
+                      "Bytes":  1310,
+                      "SHA256":  "55C7486A71C6FFFA2A5F1359C6274D2E59F757A88E7185301C90C3C5293E2030"
+                  },
+                  {
+                      "Component":  "DXC API headers",
+                      "Path":  "licenses/DXC-dxcapi-NOTICE.txt",
+                      "Terms":  "Notice only; referenced full license missing locally",
+                      "Integration":  "D3D12 runtime API declarations",
+                      "Source":  "thirdparty/dxc/include/dxcapi.h",
+                      "SourceSHA256":  "7B4E2D7BBF0FC3DB84EAC717846F9BF6686B7E231CB4F7BCDE077390CCA7FD78",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Exact comment block bytes",
+                      "Bytes":  802,
+                      "SHA256":  "92C26891BECDB2CC25AF97016D41C974FE0C19AB4527C8AFB50B61B93A5B95ED"
+                  },
+                  {
+                      "Component":  "DXC converter header",
+                      "Path":  "licenses/DXC-DxbcConverter-NOTICE.txt",
+                      "Terms":  "Notice only; referenced full license missing locally",
+                      "Integration":  "D3D12 runtime API declarations",
+                      "Source":  "thirdparty/dxc/include/DxbcConverter.h",
+                      "SourceSHA256":  "40D1A4F604CFA0E12AB17D234980ECFCF79F6232B85D5B6643C0D1DEB5B2F4BE",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Exact comment block bytes",
+                      "Bytes":  801,
+                      "SHA256":  "A6DD93692097A1114F2C0C9B33FDE86771918E01507B0A72305E647E16F29918"
+                  },
+                  {
+                      "Component":  "libmspack",
+                      "Path":  "licenses/libmspack-COPYING.LIB.txt",
+                      "Terms":  "LGPL-2.1",
+                      "Integration":  "lzxd.c static library linked into rexruntime",
+                      "Source":  "thirdparty/libmspack/libmspack/COPYING.LIB",
+                      "SourceSHA256":  "885A03F54B157961236F46843E79972ABFCD6890B6CBB368BC7ECA328FF95A12",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Entire upstream notice file bytes",
+                      "Bytes":  26934,
+                      "SHA256":  "885A03F54B157961236F46843E79972ABFCD6890B6CBB368BC7ECA328FF95A12"
+                  },
+                  {
+                      "Component":  "libmspack LZX",
+                      "Path":  "licenses/libmspack-LZX-NOTICE.txt",
+                      "Terms":  "LGPL-2.1 copyright notice",
+                      "Integration":  "lzxd.c static library linked into rexruntime",
+                      "Source":  "thirdparty/libmspack/libmspack/mspack/lzxd.c",
+                      "SourceSHA256":  "2ADA35D1FA8855BBCC645234D5745EBA90F8C37D7C8A694A22DF3B1159C6E21F",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Exact comment block bytes",
+                      "Bytes":  419,
+                      "SHA256":  "9B07C35C161F1D5132A84C2C4061704DACEEDC2D8F8A704FB086B247BD21DA8E"
+                  },
+                  {
+                      "Component":  "FFmpeg",
+                      "Path":  "licenses/FFmpeg-COPYING.LGPLv2.1.txt",
+                      "Terms":  "LGPL-2.1-or-later under inspected configuration",
+                      "Integration":  "libavcodec and libavutil static libraries",
+                      "Source":  "thirdparty/FFmpeg/COPYING.LGPLv2.1",
+                      "SourceSHA256":  "92A759EC0FEBDE4750821736BBDE642A3B835C0604FC81BEE62F9E428F86981F",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Entire upstream notice file bytes",
+                      "Bytes":  27028,
+                      "SHA256":  "92A759EC0FEBDE4750821736BBDE642A3B835C0604FC81BEE62F9E428F86981F"
+                  },
+                  {
+                      "Component":  "FFmpeg",
+                      "Path":  "licenses/FFmpeg-LICENSE.md",
+                      "Terms":  "Upstream licensing overview; optional licenses are not all enabled",
+                      "Integration":  "libavcodec and libavutil static libraries",
+                      "Source":  "thirdparty/FFmpeg/LICENSE.md",
+                      "SourceSHA256":  "EDE44CB106760B85E1773DF347324D5CC29622F058F0C986AE1FA857A6FEBC3B",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Entire upstream notice file bytes",
+                      "Bytes":  4505,
+                      "SHA256":  "EDE44CB106760B85E1773DF347324D5CC29622F058F0C986AE1FA857A6FEBC3B"
+                  },
+                  {
+                      "Component":  "FFmpeg IJG fast DCT",
+                      "Path":  "licenses/FFmpeg-IJG-jfdctfst-NOTICE.txt",
+                      "Terms":  "Independent JPEG Group terms",
+                      "Integration":  "Selected FFmpeg codec source",
+                      "Source":  "thirdparty/FFmpeg/libavcodec/jfdctfst.c",
+                      "SourceSHA256":  "261F7841F30DAEF68E0BD4CDCCEC5EF4EF3D345562753CB01E9ED9532ECC7246",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Exact comment block bytes",
+                      "Bytes":  3449,
+                      "SHA256":  "DA7530A4BA1EDEF8E7F7237859A347078175AB127240A9AC949C564C59A52002"
+                  },
+                  {
+                      "Component":  "FFmpeg IJG integer DCT",
+                      "Path":  "licenses/FFmpeg-IJG-jfdctint-NOTICE.txt",
+                      "Terms":  "Independent JPEG Group terms",
+                      "Integration":  "Included by selected jfdctint.c source",
+                      "Source":  "thirdparty/FFmpeg/libavcodec/jfdctint_template.c",
+                      "SourceSHA256":  "5DF05A23426E14F2A3D44DCF545C45E81B56AED8F4232277CC08EA25B110D2ED",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Exact comment block bytes",
+                      "Bytes":  2990,
+                      "SHA256":  "A9A0B03F899E1B7CA4F1FA634E2A414693F7543DB7DD6FA5C9F1C3481B63A0FD"
+                  },
+                  {
+                      "Component":  "FFmpeg IJG inverse DCT",
+                      "Path":  "licenses/FFmpeg-IJG-jrevdct-NOTICE.txt",
+                      "Terms":  "Independent JPEG Group terms",
+                      "Integration":  "Selected FFmpeg codec source",
+                      "Source":  "thirdparty/FFmpeg/libavcodec/jrevdct.c",
+                      "SourceSHA256":  "C6E1746A3291B1D0702F274FB0D8538AE328749D6E576E0728A307131974D48E",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Exact comment block bytes",
+                      "Bytes":  3091,
+                      "SHA256":  "68C18793DD15F32EB7BFA1E44198067D0C98EF7E2A75F12A6C212E2533F04C69"
+                  },
+                  {
+                      "Component":  "Crypto DES",
+                      "Path":  "licenses/Crypto-DES-LICENSE.txt",
+                      "Terms":  "MIT",
+                      "Integration":  "Included directly by xboxkrnl_crypt.cpp",
+                      "Source":  "thirdparty/crypto/des/LICENSE",
+                      "SourceSHA256":  "61445C2BE57DAEC4B5A09A7E21EF05376406F2163C4A7C7B663C409664C17857",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Entire upstream notice file bytes",
+                      "Bytes":  1081,
+                      "SHA256":  "61445C2BE57DAEC4B5A09A7E21EF05376406F2163C4A7C7B663C409664C17857"
+                  },
+                  {
+                      "Component":  "TinySHA1",
+                      "Path":  "licenses/TinySHA1-LICENSE.txt",
+                      "Terms":  "ISC-style notice",
+                      "Integration":  "Included by kernel crypto and XEX loader",
+                      "Source":  "thirdparty/crypto/TinySHA1.hpp",
+                      "SourceSHA256":  "54DC7225C1FA3ED9073F6FBEC00AA0910FFEE3A34347D65E10FAC077B69F7A95",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Exact comment block bytes",
+                      "Bytes":  1074,
+                      "SHA256":  "ED0954980ABECC57125B5C440B8F9FEB90127C83978983A049907CAC3FFFFF04"
+                  },
+                  {
+                      "Component":  "Rijndael AES",
+                      "Path":  "licenses/Rijndael-NOTICE.txt",
+                      "Terms":  "Public-domain dedication and warranty disclaimer",
+                      "Integration":  "Included directly by xex_module.cpp",
+                      "Source":  "thirdparty/crypto/rijndael-alg-fst.c",
+                      "SourceSHA256":  "01DA895812EAFB9DDD4522ACB45A51B3D4671DB0FDF3E90061EA2EDEFE9A4ED9",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Exact comment block bytes",
+                      "Bytes":  1129,
+                      "SHA256":  "39205153CAB8931376822F429616D465D4B35708E9C7503691B0784CEC1CE0DD"
+                  },
+                  {
+                      "Component":  "Crypto SHA256",
+                      "Path":  "licenses/SHA256-NOTICE.txt",
+                      "Terms":  "Notice states zlib when acquired; full historical terms need verification",
+                      "Integration":  "Included directly by xboxkrnl_crypt.cpp",
+                      "Source":  "thirdparty/crypto/sha256.cpp",
+                      "SourceSHA256":  "16065F6AD1228F7D35A4023DA2AB3E59DC7B2A677401C87A00A1333BCC4A462F",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Exact comment block bytes",
+                      "Bytes":  272,
+                      "SHA256":  "16758EEE10E418BB7C0EB3BE0BFE29C4006996DD366F29B2D782F636711505A1"
+                  },
+                  {
+                      "Component":  "DXBC checksum",
+                      "Path":  "licenses/DXBC-Checksum-NOTICE.txt",
+                      "Terms":  "AMD attribution and RSA-MD5 derivative notice",
+                      "Integration":  "Compiled into GPU plugin",
+                      "Source":  "thirdparty/dxbc/DXBCChecksum.cpp",
+                      "SourceSHA256":  "73279B79725EA61EC1A04A059A9D954E0573A630491C475BF9B2AECD002CB29B",
+                      "SourceByteOffset":  0,
+                      "Extraction":  "Exact comment block bytes",
+                      "Bytes":  3832,
+                      "SHA256":  "AEB6D64B11D48E0F55CF70E37131224018D6DCBEAD99FE5CBA775BE89A4C2D5B"
+                  }
+              ],
+    "RemainingReview":  [
+                            {
+                                "Component":  "FFmpeg and libmspack",
+                                "Item":  "Static-link LGPL obligations",
+                                "Detail":  "Prepare exact corresponding library source, local modifications and build instructions, plus a workable relink mechanism or another compliant distribution method. License text alone is insufficient. Validate against the final binaries."
+                            },
+                            {
+                                "Component":  "DXC API headers",
+                                "Item":  "Full upstream license missing from vendored directory",
+                                "Detail":  "README identifies upstream revision 6b6f40200bea5ed99367513f53f6a28e52fd3d0e. Retrieve and verify its LICENSE.TXT; the two collected header notices are not replacements."
+                            },
+                            {
+                                "Component":  "disruptorplus",
+                                "Item":  "Upstream license and revision not present in vendored header directory",
+                                "Detail":  "Runtime rexcore links this header-only queue. Establish exact provenance and preserve the applicable upstream license."
+                            },
+                            {
+                                "Component":  "Crypto SHA256",
+                                "Item":  "Historical zlib terms",
+                                "Detail":  "The source says altered for Xenia and licensed under zlib when acquired, but supplies only a website reference. Preserve attribution and verify the exact historical full terms."
+                            },
+                            {
+                                "Component":  "SDL3, FFmpeg and generated resources",
+                                "Item":  "Nested notices and source coverage",
+                                "Detail":  "Review additional embedded notices in selected source/header/resource inputs (including fonts and Windows HID helpers). This reviewed allowlist is not an exhaustive per-file scan or link map."
+                            },
+                            {
+                                "Component":  "Microsoft redistributable DLLs",
+                                "Item":  "Redistribution evidence",
+                                "Detail":  "Record exact Visual C++ runtime versions and applicable redistribution terms for the final bundled DLLs. They are outside this SDK-source collector."
+                            },
+                            {
+                                "Component":  "Skate 2 player",
+                                "Item":  "Game-derived distribution rights",
+                                "Detail":  "The newly authored project license is separate from third-party and game-derived code. This notice inventory grants no rights to the original game, assets, or generated game-derived code."
+                            }
+                        ]
+}

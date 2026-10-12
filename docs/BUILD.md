@@ -1,6 +1,6 @@
 # Build from source
 
-This guide describes the Windows workflow. Fresh game-code generation and application compilation/linking have passed in an isolated export directory on the development PC. That check reused a copied, prebuilt SDK install; a fresh SDK build through this workflow and installation on another PC remain unverified.
+This guide describes the Windows workflow. Fresh game-code generation and application compilation/linking have passed in an isolated export directory on the development PC using a copied, prebuilt SDK install. Separately, bootstrap and a fresh patched SDK build/install passed in another isolated directory on the same PC. Building the application against that fresh SDK is still being checked; installation on another PC remains unverified.
 
 ## Prerequisites
 
@@ -36,5 +36,7 @@ Open **Launch Skate 2.cmd** after a successful build. Runtime files are in `skat
 ```
 
 Packaging creates a fresh folder under `packages`, checks x64 native dependencies, and excludes game files by default. It can require `-CrtDirectory` pointing at the installed official x64 CRT redistributable directory. It does not create a public release or establish that third-party binary notices are complete. `-IncludeGameData` is for local use only; never upload such a package.
+
+To package an isolated application build, pass `-BuildDirectory '<application build directory>'`. Its runtime DLLs must match this checkout's installed SDK. Packaging verifies the collected notice files against `licenses/NOTICE-INDEX.json`; `scripts/Collect-Skate2Notices.ps1 -CheckOnly` checks those notices against the local pinned SDK source. The inventory records the remaining source, relinking, and notice review work.
 
 The exporter uses an explicit source allowlist and writes a new folder under `source-exports`. It excludes game inputs, generated code, SDK/tool downloads, logs, recordings, saves, caches, and local configuration. Export checks are an additional review aid, not a reason to upload the development workspace wholesale. See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) before publication.

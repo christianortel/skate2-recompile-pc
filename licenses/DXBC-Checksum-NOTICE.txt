@@ -1,0 +1,73 @@
+// Xenia: removed Windows.h dependency.
+
+//=====================================================================
+// Copyright 2008-2016 (c), Advanced Micro Devices, Inc. All rights reserved.
+//
+/// \author AMD Developer Tools Team
+/// \file DXBCChecksum.cpp
+///
+//=====================================================================
+
+//=====================================================================
+// $Id: //devtools/main/Common/Src/ShaderUtils/DX10/DXBCChecksum.cpp#4 $
+//
+// Last checkin:  $DateTime: 2016/04/18 06:01:26 $
+// Last edited by: $Author:  AMD Developer Tools Team
+//=====================================================================
+// Free for all implementation of the MD5 hash algorithm
+
+/*
+**********************************************************************
+** DXBCChecksum.cpp                                                     **
+**                                                                  **
+** - Modified by Seth Sowerby, November 2007                        **
+**   Modified to match DXBC checksum algorithm used by Microsoft    **
+**                                                                  **
+**********************************************************************
+*/
+
+/*
+**********************************************************************
+** MD5.cpp                                                          **
+**                                                                  **
+** - Style modified by Tony Ray, January 2001                       **
+**   Added support for randomizing initialization constants         **
+** - Style modified by Dominik Reichl, April 2003                   **
+**   Optimized code                                                 **
+**                                                                  **
+**********************************************************************
+*/
+
+/*
+ **********************************************************************
+ ** MD5.c                                                            **
+ ** RSA Data Security, Inc. MD5 Message Digest Algorithm             **
+ ** Created: 2/17/90 RLR                                             **
+ ** Revised: 1/91 SRD,AJ,BSK,JT Reference C Version                  **
+ **********************************************************************
+ */
+
+/*
+ **********************************************************************
+ ** Copyright (C) 1990, RSA Data Security, Inc. All rights reserved. **
+ **                                                                  **
+ ** License to copy and use this software is granted provided that   **
+ ** it is identified as the "RSA Data Security, Inc. MD5 Message     **
+ ** Digest Algorithm" in all material mentioning or referencing this **
+ ** software or this function.                                       **
+ **                                                                  **
+ ** License is also granted to make and use derivative works         **
+ ** provided that such works are identified as "derived from the RSA **
+ ** Data Security, Inc. MD5 Message Digest Algorithm" in all         **
+ ** material mentioning or referencing the derived work.             **
+ **                                                                  **
+ ** RSA Data Security, Inc. makes no representations concerning      **
+ ** either the merchantability of this software or the suitability   **
+ ** of this software for any particular purpose.  It is provided "as **
+ ** is" without express or implied warranty of any kind.             **
+ **                                                                  **
+ ** These notices must be retained in any copies of any part of this **
+ ** documentation and/or software.                                   **
+ **********************************************************************
+ */
+

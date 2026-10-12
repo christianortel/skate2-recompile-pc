@@ -11,6 +11,8 @@ There is no public release download yet. The source export is for developers; se
 3. Wait for the copy and hash checks to finish. The source is preserved; an existing `game` folder is never overwritten. Ensure there is enough space for another full copy of the extracted game.
 4. Connect your controller and open **Launch Skate 2.cmd**. A black startup delay can occur. If it fails, preserve the error and check `logs` beside the executable.
 
+The CMD launchers use Windows PowerShell 5.1 with its native module defaults and an execution-policy setting limited to that child process. This also supports launching them from PowerShell 7. They do not change your parent shell, user, or machine settings. Organization-enforced script restrictions still apply; report a policy error rather than changing those settings.
+
 The supported executable has Title ID `4541087F`, Media ID `6ADB5821`, version `0.0.0.2`, and SHA-256:
 
 ```text

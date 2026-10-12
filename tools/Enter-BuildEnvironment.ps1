@@ -46,9 +46,11 @@ if ($localToolBins.Count) { $env:PATH = ($localToolBins -join ';') + ';' + $env:
 foreach ($toolName in @('clang', 'clang++', 'cmake', 'ninja', 'git')) {
     if (-not (Get-Command $toolName -CommandType Application -ErrorAction SilentlyContinue)) { throw "Missing $toolName. Install the documented toolchain and add it to PATH." }
 }
-$clangVersion = (& clang --version | Select-Object -First 1)
+# Capture all native output before selecting a line: an early-closing pipeline
+# can terminate the command with exit -1 in Windows PowerShell 5.1.
+$clangVersion = @(& clang --version)[0]
 if ($LASTEXITCODE -ne 0 -or $clangVersion -notmatch 'clang version (\d+)\.' -or [int]$Matches[1] -lt 20) { throw 'LLVM Clang 20 or later is required.' }
-$cmakeVersion = (& cmake --version | Select-Object -First 1)
+$cmakeVersion = @(& cmake --version)[0]
 if ($LASTEXITCODE -ne 0 -or $cmakeVersion -notmatch 'cmake version (\d+\.\d+\.\d+)' -or [version]$Matches[1] -lt [version]'3.25.0') { throw 'CMake 3.25 or later is required.' }
 $env:CC = 'clang'
 $env:CXX = 'clang++'

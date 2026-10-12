@@ -1,0 +1,11 @@
+///////////////////////////////////////////////////////////////////////////////
+//                                                                           //
+// DxbcConverter.h                                                           //
+// Copyright (C) Microsoft. All rights reserved.                             //
+// This file is distributed under the University of Illinois Open Source     //
+// License. See LICENSE.TXT for details.                                     //
+//                                                                           //
+// Provides declarations for the DirectX DXBC to DXIL converter component.   //
+//                                                                           //
+///////////////////////////////////////////////////////////////////////////////
+

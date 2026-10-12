@@ -34,7 +34,9 @@ class Skate2App : public rex::ReXApp {
                             "readback_memexport", "readback_memexport_fast",
                             "clear_memory_page_state", "render_target_path_d3d12",
                             "vsync", "video_mode_refresh_rate",
-                            "d3d12_present_idleclean_sync"}) {
+                            "d3d12_present_idleclean_sync", "skate2_frame_rate",
+                            "resolution_scale", "draw_resolution_scale_x",
+                            "draw_resolution_scale_y"}) {
       REXLOG_INFO("Graphics setting {}={}", flag, rex::cvar::GetFlagByName(flag));
     }
     // The SDK exposes per-frame CSV counters but does not open the configured

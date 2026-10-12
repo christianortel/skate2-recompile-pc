@@ -11,7 +11,7 @@ $exportRoot = Join-Path $workspace 'source-exports'
 # This is the complete inclusion policy. Do not replace it with recursive copy,
 # git ls-files, or a wildcard: this workspace also contains private game data.
 $allowlist = @(
-    '.gitignore', 'README.md', 'THIRD_PARTY_NOTICES.md',
+    '.gitignore', 'README.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md',
     'Import Game Files.cmd', 'Launch Skate 2.cmd', 'Launch Skate 2 - 60 FPS.cmd',
     'Launch Skate 2 - Unlocked FPS.cmd', 'Launch Skate 2 - 2x Quality.cmd', 'Launch Skate 2 - 4x Quality.cmd',
     'Launch Skate 2 - 1x Performance.cmd',
@@ -23,6 +23,9 @@ $allowlist = @(
     'scripts/Capture-Skate2Load.ps1', 'scripts/analyze_frame_times.py',
     'scripts/tests/Test-FrameAnalysis.py', 'tools/Enter-BuildEnvironment.ps1',
     'scripts/tests/Test-BuildInvocation.ps1',
+    'scripts/tests/Test-PlayerLaunchers.ps1',
+    'scripts/tests/Test-CvarInit.ps1', 'scripts/tests/cvar_init_main.cpp',
+    'scripts/Collect-Skate2Notices.ps1',
     'skate2/CMakeLists.txt', 'skate2/CMakePresets.json', 'skate2/skate2_manifest.toml',
     'skate2/src/main.cpp', 'skate2/src/skate2_app.h',
     'skate2/src/crash_diagnostics.cpp', 'skate2/src/crash_diagnostics.h',
@@ -42,7 +45,22 @@ $allowlist = @(
     'patches/rexglue-0.10.0-cvar-validator.patch',
     'patches/rexglue-0.10.0-vertex-buffer-coherency.patch',
     'patches/rexglue-0.10.0-present-idleclean-diagnostic.patch',
-    'licenses/ReXGlue-LICENSE.txt'
+    'licenses/ReXGlue-LICENSE.txt', 'licenses/NOTICE-INDEX.json',
+    'licenses/SDL3-LICENSE.txt', 'licenses/HIDAPI-license-options.txt',
+    'licenses/HIDAPI-BSD-LICENSE.txt', 'licenses/HIDAPI-Windows-NOTICE.txt',
+    'licenses/fmt-LICENSE.txt', 'licenses/spdlog-LICENSE.txt', 'licenses/xxHash-LICENSE.txt',
+    'licenses/aes128-LICENSE.txt', 'licenses/o1heap-LICENSE.txt', 'licenses/SIMDe-COPYING.txt',
+    'licenses/tomlplusplus-LICENSE.txt', 'licenses/CLI11-LICENSE.txt', 'licenses/UTF8CPP-LICENSE.txt',
+    'licenses/ImGui-LICENSE.txt', 'licenses/ImGui-stb_rectpack-LICENSE.txt',
+    'licenses/ImGui-stb_truetype-LICENSE.txt', 'licenses/ImGui-stb_textedit-LICENSE.txt',
+    'licenses/stb_image-LICENSE.txt', 'licenses/RenderDoc-API-LICENSE.txt',
+    'licenses/DXC-dxcapi-NOTICE.txt', 'licenses/DXC-DxbcConverter-NOTICE.txt',
+    'licenses/libmspack-COPYING.LIB.txt', 'licenses/libmspack-LZX-NOTICE.txt',
+    'licenses/FFmpeg-COPYING.LGPLv2.1.txt', 'licenses/FFmpeg-LICENSE.md',
+    'licenses/FFmpeg-IJG-jfdctfst-NOTICE.txt', 'licenses/FFmpeg-IJG-jfdctint-NOTICE.txt',
+    'licenses/FFmpeg-IJG-jrevdct-NOTICE.txt', 'licenses/Crypto-DES-LICENSE.txt',
+    'licenses/TinySHA1-LICENSE.txt', 'licenses/Rijndael-NOTICE.txt',
+    'licenses/SHA256-NOTICE.txt', 'licenses/DXBC-Checksum-NOTICE.txt'
 )
 function Assert-OrdinaryPath([string]$Path) {
     for ($current = [IO.Path]::GetFullPath($Path); $current;) {

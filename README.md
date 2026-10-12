@@ -27,6 +27,6 @@ A downloadable release has not been published yet. GitHub's **Download ZIP** con
 
 Reports should include game revision, GPU/driver, launcher, game mode/location, reproduction steps, and whether it happens at the default quality. Review logs for personal paths before sharing them. Do not submit game files, generated recompiled game code, or save data.
 
-See [release checklist](docs/RELEASE_CHECKLIST.md) and [third-party notices](THIRD_PARTY_NOTICES.md). The project-wide license choice is pending; included third-party notices retain their own terms.
+See [release checklist](docs/RELEASE_CHECKLIST.md) and [third-party notices](THIRD_PARTY_NOTICES.md). Newly authored port code and documentation use the [MIT license](LICENSE). Third-party code and derived patches retain their applicable upstream terms. This license does not cover the original game, its assets, or generated game-derived code.
 
 This is an independent fan project. This project is not endorsed by or affiliated with EA or its licensors. Skate 2 and its original game content belong to their respective rights holders; this project takes no credit for the original game. This statement does not grant permission to redistribute game files. No claim is made that this is the first Skate 2 recompilation project.

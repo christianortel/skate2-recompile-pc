@@ -33,6 +33,13 @@ if (Test-Path -LiteralPath $sdkSource) {
 if ($CheckOnly) {
     Write-Host 'Check only: no downloads or changes. Normal execution clones the official pinned SDK and its pinned submodules.'
 } else {
-    Invoke-GitChecked @('-C', $sdkSource, 'submodule', 'update', '--init', '--recursive', '--jobs', '4')
+    # This project's build selects Windows D3D12 with tests/Tracy/FidelityFX
+    # disabled. Fetch only its runtime and codegen dependencies, at their
+    # exact superproject revisions, without unrelated Vulkan/test histories.
+    $submodules = @('cli11', 'libmspack', 'FFmpeg', 'tomlplusplus', 'simde',
+        'xxHash', 'spdlog', 'fmt', 'utfcpp', 'imgui', 'sdl3', 'o1heap', 'inja') |
+        ForEach-Object { "thirdparty/$_" }
+    Invoke-GitChecked (@('-C', $sdkSource, 'submodule', 'update', '--init',
+        '--recursive', '--depth', '1', '--jobs', '4', '--') + $submodules)
     Write-Host 'SDK source is ready. Install the documented build tools, then run scripts/Build-Skate2.ps1.'
 }
