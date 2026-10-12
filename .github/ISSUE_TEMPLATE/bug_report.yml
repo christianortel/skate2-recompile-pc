@@ -12,7 +12,7 @@ body:
     attributes:
       label: Version
       description: Release version or source commit; include whether you used the Windows ZIP or built from source.
-      placeholder: v0.1.0 Windows ZIP
+      placeholder: v0.1.1 Windows ZIP
     validations:
       required: true
   - type: textarea
@@ -41,7 +41,8 @@ body:
     attributes:
       label: Launcher
       options:
-        - Launch Skate 2.cmd (default 2x / unlimited)
+        - Launch Skate 2.exe (default 2x / unlimited)
+        - Launch Skate 2.cmd (2x / unlimited)
         - 1x Performance
         - 2x Quality or Unlocked FPS
         - 4x Quality

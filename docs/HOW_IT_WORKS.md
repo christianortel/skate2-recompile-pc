@@ -14,6 +14,8 @@ The SDK patches cover Windows builds, FLOAT16 conversion, concurrent input acces
 
 ## Graphics and frame timing
 
+Graphics use ReXGlue's Xenos GPU plugin, ported from Xenia, to translate Xbox 360 GPU commands and shaders to Direct3D 12. The game CPU code is compiled ahead of time to native Windows code; the renderer still uses this GPU compatibility layer. A separate Xenia application is not required.
+
 The default launch profile combines synchronous shader compilation with a graphics synchronization patch. At eligible idle-clean requests between closed frames, the runtime waits for native GPU completion before command processing continues. The patch covers this specific command pattern; it is not a complete implementation of every Xbox 360 GPU wait operation.
 
 The frame-rate hook changes the game's presentation-interval selection while retaining its clock implementation. Unlimited mode keeps a 60 Hz guest refresh. Numeric modes use paced presentation with the selected guest refresh. The supplied profiles require guest VSync to remain enabled and apply the synchronization settings together.

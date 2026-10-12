@@ -1,0 +1,28 @@
+#include <windows.h>
+
+1 VERSIONINFO
+ FILEVERSION 0,1,1,0
+ PRODUCTVERSION 0,1,1,0
+ FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+ FILEFLAGS 0
+ FILEOS VOS_NT_WINDOWS32
+ FILETYPE VFT_APP
+BEGIN
+ BLOCK "StringFileInfo"
+ BEGIN
+  BLOCK "040904B0"
+  BEGIN
+   VALUE "FileDescription", "Skate 2 launcher\0"
+   VALUE "FileVersion", "0.1.1\0"
+   VALUE "InternalName", "skate2_launcher\0"
+   VALUE "OriginalFilename", "Launch Skate 2.exe\0"
+   VALUE "ProductName", "Skate 2 Recompile PC\0"
+   VALUE "ProductVersion", "0.1.1\0"
+   VALUE "Comments", "Project launcher source is licensed under the MIT License.\0"
+  END
+ END
+ BLOCK "VarFileInfo"
+ BEGIN
+  VALUE "Translation", 0x0409, 1200
+ END
+END

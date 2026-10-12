@@ -2,6 +2,7 @@
 param(
     [string]$Destination,
     [string]$BuildDirectory,
+    [string]$LauncherPath,
     [switch]$IncludeGameData,
     [switch]$SkipGameData,
     [string]$CrtDirectory,
@@ -20,6 +21,14 @@ if ($BuildDirectory) {
     $buildRoot = [IO.Path]::GetFullPath($buildRoot)
 }
 $sdkRoot = Join-Path $workspace 'tools\rexglue-sdk-source'
+if (-not $LauncherPath) { $LauncherPath = Join-Path $workspace 'Launch Skate 2.exe' }
+elseif (-not [IO.Path]::IsPathRooted($LauncherPath)) { $LauncherPath = Join-Path $workspace $LauncherPath }
+if (-not (Test-Path -LiteralPath $LauncherPath -PathType Leaf)) {
+    throw 'Launch Skate 2.exe is missing. Run scripts/Build-Skate2Launcher.ps1 before packaging.'
+}
+if ([IO.Path]::GetFileName($LauncherPath) -ne 'Launch Skate 2.exe') {
+    throw 'The native launcher must be named Launch Skate 2.exe.'
+}
 $sdkBin = Join-Path $sdkRoot 'out\install\win-amd64\bin'
 $readobj = Join-Path $workspace 'tools\llvm-20.1.8\bin\llvm-readobj.exe'
 $gameRoot = Join-Path $workspace 'game'
@@ -133,6 +142,8 @@ function Resolve-NativeDependency([string]$Name) {
 }
 
 Add-NativeFile (Join-Path $buildRoot 'skate2.exe') 'Native Release build'
+Assert-OrdinaryAncestors $LauncherPath
+Add-NativeFile $LauncherPath 'Native Windows launcher'
 # Runtime-loaded GPU plugins are absent from the executable import table.
 foreach ($name in @('rexruntime.dll', 'rexgpu-xenos.dll')) {
     $builtPath = Join-Path $buildRoot $name
@@ -281,7 +292,10 @@ $packageIntro
 
 1. Keep all package files together in a writable folder.
 2. $gameNote
-3. Connect your controller, then run Launch Skate 2.cmd.
+3. Connect your controller, then run Launch Skate 2.exe.
+
+For Armoury Crate, add Launch Skate 2.exe as a custom game. Keep it beside
+the rest of this package. The CMD launchers remain available as alternatives.
 
 If the launcher asks for the Microsoft Visual C++ x64 Runtime, open
 Install Visual C++ Runtime.url, run Microsoft's installer, then launch again.

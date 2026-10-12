@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('All', 'SDK', 'Generate', 'Build')]
+    [ValidateSet('All', 'SDK', 'Generate', 'Build', 'Launcher')]
     [string]$Stage = 'All',
     [ValidateRange(1, 32)]
     [int]$Jobs = 4,
@@ -17,6 +17,11 @@ $projectRoot = Join-Path $workspace 'skate2'
 $gameRoot = Join-Path $workspace 'game'
 $manifest = Join-Path $projectRoot 'skate2_manifest.toml'
 $expectedXexSha256 = '116BA3EE37FCF0D8DB60B7D47C971FDB6D3EB2A7A4D3CFC3611A06704A588AE5'
+
+if ($Stage -eq 'Launcher') {
+    & (Join-Path $PSScriptRoot 'Build-Skate2Launcher.ps1') -Jobs $Jobs
+    return
+}
 
 function Invoke-Checked {
     param([string]$Program, [string[]]$Arguments)
@@ -116,6 +121,9 @@ try {
                     '--parallel', "$Jobs")
             }
         } finally { Pop-Location }
+    }
+    if ($Stage -in @('All', 'Build')) {
+        & (Join-Path $PSScriptRoot 'Build-Skate2Launcher.ps1') -Jobs $Jobs
     }
 } finally {
     Stop-Transcript | Out-Null

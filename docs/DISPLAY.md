@@ -1,19 +1,28 @@
 # Display and performance
 
-Use the CMD launchers in the repository or player-package root to choose a profile. Close the game before changing profiles.
+Use **Launch Skate 2.exe** in the player-package root for the default profile. The CMD launchers remain available for the same default and alternate profiles. A source checkout gains the native launcher after building; its CMD launchers also work. Close the game before changing profiles.
 
 ## Launch profiles
 
 | Launcher | Rendering quality | Frame-rate mode |
 | --- | --- | --- |
-| **Launch Skate 2.cmd** | 2× | Unlimited; default profile |
+| **Launch Skate 2.exe** | 2× | Unlimited; default profile |
+| **Launch Skate 2.cmd** | 2× | Unlimited; same default through CMD |
 | **Launch Skate 2 - 1x Performance.cmd** | 1× | Unlimited; lower GPU load |
 | **Launch Skate 2 - 4x Quality.cmd** | 4× | Unlimited; experimental |
 | **Launch Skate 2 - 60 FPS.cmd** | Saved/default quality | Paced 60 FPS target |
 
 **Launch Skate 2 - 2x Quality.cmd** and **Launch Skate 2 - Unlocked FPS.cmd** select the same profile as the default launcher. All supplied profiles enable synchronous shader compilation and GPU idle-clean synchronization. Directly opening `skate2.exe` does not apply a launcher profile.
 
+The native EXE runs the existing PowerShell startup logic. v0.1.1 changes the entrypoint and packaging while preserving the v0.1.0 game/runtime binaries and graphics fixes.
+
 Actual frame rate depends on hardware and workload. If performance or visuals regress, restart with the 1× Performance launcher. Leave the runtime's **VSync** setting enabled: it also controls guest timing.
+
+## Performance troubleshooting
+
+For a laptop or handheld, connect power and select an appropriate **Performance** or **Turbo** mode in the device's power controls. A reported slowdown on the tested laptop was traced to **Silent/low-power mode**. Available modes vary by device; this does not establish performance on ROG Ally or other untested hardware.
+
+If it still feels slow, try **Launch Skate 2 - 1x Performance.cmd** and compare the same location. An FPS overlay can count presented frames without describing how regularly the game updates, so include visible stutter, game speed, power mode, and the selected launch profile in performance reports. A high overlay number alone does not confirm smooth gameplay.
 
 ## Rendering quality and 4K displays
 
@@ -32,6 +41,14 @@ Other rendering passes can use different sizes. These are internal target dimens
 
 ## Advanced launch options
 
+The native launcher accepts optional arguments for game-library entries. For example, set the entry's arguments to `--render-scale 1` for lower GPU load, or `--frame-rate 120 --render-scale 2` for a paced target. In PowerShell:
+
+```powershell
+& '.\Launch Skate 2.exe' --render-scale 1
+```
+
+Its defaults remain `--frame-rate unlimited --render-scale 2`. Keep the EXE path and arguments in separate fields if your game library provides them.
+
 Open Windows PowerShell in the repository or player-package folder. For a custom target and quality:
 
 ```powershell
@@ -40,7 +57,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Launch-Skate2.
 
 Frame-rate choices are `original`, `60`, `120`, `144`, `165`, `200`, `240`, and `unlimited`. Rendering scales are `1`, `2`, `3`, and `4`. These frame modes are experimental; the number is a target, not a performance guarantee.
 
-Explicit launcher options take precedence over saved F4 settings. Omitting `-FrameRate` or `-RenderScale` uses the saved value, or the application default when none exists. Restart to apply a new profile.
+Explicit launcher options take precedence over saved F4 settings. When calling the PowerShell script directly, omitting `-FrameRate` or `-RenderScale` uses the saved value, or the application default when none exists. Restart to apply a new profile.
 
 ## Monitors and windowed mode
 

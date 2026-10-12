@@ -6,15 +6,16 @@ A community Windows port of the Xbox 360 version of **Skate 2**, built with [ReX
 
 ## Getting started
 
-1. Download **Skate2-PC-v0.1.0-Windows-x64.zip** from [Releases](https://github.com/christianortel/skate2-recompile-pc/releases/latest) and extract the entire ZIP into a writable folder.
+1. Download **Skate2-PC-v0.1.1-Windows-x64.zip** from [Releases](https://github.com/christianortel/skate2-recompile-pc/releases/latest) and extract the entire ZIP into a writable folder.
 2. Run **Import Game Files.cmd** and select your extracted Xbox 360 game folder containing `default.xex` and `data`. This is a one-time copy and verification step.
-3. Connect your controller and run **Launch Skate 2.cmd**.
+3. Connect your controller and run **Launch Skate 2.exe**.
 
 If the launcher requests the Microsoft Visual C++ x64 Runtime, open the included **Install Visual C++ Runtime.url**, run Microsoft's installer, then launch again. The [installation guide](docs/INSTALL.md) covers every step, the supported game revision, controls, and troubleshooting.
 
 You will need:
 
 - A Windows 10/11 x64 PC with a Direct3D 12 GPU.
+- Windows PowerShell 5.1, included with Windows 10/11; the native launcher uses the existing startup script.
 - Your own extracted files from the [supported Xbox 360 game revision](docs/INSTALL.md#supported-game-version).
 - A controller. USB DualSense input works directly without DS4Windows; broader controller compatibility is still being tested.
 
@@ -30,7 +31,9 @@ Original game files are required and are not included or downloaded by this proj
 - Unlimited and paced frame-rate options.
 - 1× and 2× rendering profiles, with an experimental 4× option.
 
-Use **Launch Skate 2.cmd** for the default **2× quality / unlimited FPS** profile. For lower GPU load, use **Launch Skate 2 - 1x Performance.cmd**. Performance depends on hardware and scene complexity.
+Use **Launch Skate 2.exe** for the default **2× quality / unlimited FPS** profile. **Launch Skate 2.cmd** remains supported with the same settings. For lower GPU load, use **Launch Skate 2 - 1x Performance.cmd**. Performance depends on hardware, power mode, and scene complexity.
+
+For Armoury Crate, add **Launch Skate 2.exe** as a custom game after completing the desktop import. Keep all package files together. See [Armoury Crate and ROG Ally setup](docs/INSTALL.md#armoury-crate-and-rog-ally); ROG Ally hardware has not been tested. Existing v0.1.0 players can follow the [upgrade steps](docs/INSTALL.md#saves-and-updates) without importing their game again.
 
 Testing includes Free Skate, campaign progression, instant replay, save/reload, Alt-Tab, direct USB DualSense input, and player-package relaunch. An approximately hour-long play session progressed further through the campaign without reported glitches. These results come from one Windows PC; full campaign completion and broader hardware compatibility have not been verified. See [release notes](docs/RELEASE_NOTES.md) and [known issues](docs/KNOWN_ISSUES.md).
 

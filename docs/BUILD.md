@@ -63,15 +63,27 @@ Wait for **Game files imported and verified** before continuing. If `game` alrea
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Build-Skate2.ps1 -Stage All -Jobs 4
 ```
 
-This applies the SDK patches, builds and installs the runtime, translates the supported executable into C++, and builds `skate2.exe`. Stop if a step returns an error; logs are written under `reports`.
+This applies the SDK patches, builds and installs the runtime, translates the supported executable into C++, and builds `skate2.exe` and the native **Launch Skate 2.exe** launcher. Stop if a step returns an error; logs are written under `reports`.
 
 To match the timing-enabled development build, add `-PerformanceCounters`. This enables frame-capture counters in Release; it does not change the launcher's graphics profile. Builds without it omit those counters.
 
 ## 6. Launch
 
-Open **Launch Skate 2.cmd** from the repository root. It selects 2× quality and unlimited FPS with the graphics synchronization settings. Use **Launch Skate 2 - 1x Performance.cmd** for lower GPU load.
+Open **Launch Skate 2.exe** from the repository root after the build. It uses the existing PowerShell startup logic to select 2× quality and unlimited FPS with the graphics synchronization settings. **Launch Skate 2.cmd** remains supported. Use **Launch Skate 2 - 1x Performance.cmd** for lower GPU load.
 
 The executable and runtime DLLs are built under `skate2/out/build/win-amd64-release`. Saves, cache, and settings are stored under `skate2/`. See [Installation and controls](INSTALL.md#settings-and-controls).
+
+## Building only the native launcher
+
+The native launcher is a separate target under `launcher/`. It does not need game files or the ReXGlue SDK. With the build tools installed, run:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Build-Skate2Launcher.ps1
+```
+
+This builds under `launcher/out/win-amd64-release` and copies **Launch Skate 2.exe** to the repository root. `Build-Skate2.ps1 -Stage Launcher` also invokes this standalone build; `-Stage All` and `-Stage Build` build the launcher after the game application. A fresh clone contains the CMD launchers but gains the native EXE only after compilation.
+
+The native launcher delegates startup to `scripts/Launch-Skate2.ps1`, so Windows PowerShell 5.1 and the supplied scripts remain required when distributing it. Keep the package together and use the [installation guide](INSTALL.md#armoury-crate-and-rog-ally) for Armoury Crate setup.
 
 ## Rebuilding
 
@@ -91,7 +103,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Export-Skate2S
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Export-Skate2Source.ps1
 ```
 
-Packaging writes a new folder under `packages`, verifies native dependencies and collected notices, and excludes game files and existing personal data by default. Add `-ReleaseVersion 0.1.0` to stage a versioned player package. Release packages exclude Microsoft CRT DLLs and require the official x64 runtime to be installed separately. `-CrtDirectory` is for local development packages only. `-BuildDirectory` can select an isolated application build whose runtime DLLs match this checkout's installed SDK.
+Packaging writes a new folder under `packages`, verifies native dependencies and collected notices, and excludes game files and existing personal data by default. Add `-ReleaseVersion 0.1.1` to stage a versioned player package. The native launcher must already be built at the repository root, or supplied through `-LauncherPath`. Release packages exclude Microsoft CRT DLLs and require the official x64 runtime to be installed separately. `-CrtDirectory` is for local development packages only. `-BuildDirectory` can select an isolated application build whose runtime DLLs match this checkout's installed SDK.
 
 Source export writes an explicit allowlist to a new folder under `source-exports`. Original game files, generated game code, binaries, tools, logs, saves, and caches are excluded. `-IncludeGameData` on the packager is for local testing only; packages created with it must not be uploaded.
 

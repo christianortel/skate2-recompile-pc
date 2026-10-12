@@ -20,6 +20,7 @@
 /packages/
 /source-exports/
 /validation-builds/
+/launcher/out/
 /publish/
 /reports/*.bin
 *.xex
