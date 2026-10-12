@@ -1,0 +1,11 @@
+# Complete original virtual method. Evidence: held-switch-82A1B5B0-reviewed.json
+# and held-switch-82A1B5B0-independent.json in reports/.
+[functions."0x82A1B5B0"]
+size = 0x270
+
+# Unsigned cmplwi r4,8 / bgtlr rejects out-of-range indices. The original
+# nine inline pointer words occupy 0x82A1B5D0..0x82A1B5F3, not instructions.
+[[switch_tables]]
+address = 0x82A1B5CC
+register = 4
+labels = [0x82A1B5F4, 0x82A1B81C, 0x82A1B650, 0x82A1B81C, 0x82A1B81C, 0x82A1B708, 0x82A1B734, 0x82A1B78C, 0x82A1B7B0]

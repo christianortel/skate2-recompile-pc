@@ -1,0 +1,83 @@
+# Reviewed original callback and object-table entries for this exact game revision.
+# Original bytes, complete CFG, callable table use and no protected block overlap.
+# Evidence: reports/indirect-lower-held-reviewed.json
+
+# 8251EF08: object table 822AA318, slot 822AA328.
+[functions."0x8251EF08"]
+size = 0x10
+
+# 8251EF18: object table 822AA318, slot 822AA338.
+[functions."0x8251EF18"]
+size = 0x10
+
+# 8251EF28: object table 822AA318, slot 822AA3B4.
+[functions."0x8251EF28"]
+size = 0x20
+
+# 82528B30: object table 822A9188, slot 822A919C.
+[functions."0x82528B30"]
+size = 0x1C
+
+# 8254C090: object table 822AA3D8, slot 822AA490.
+[functions."0x8254C090"]
+size = 0x8
+
+# 8257A478: object table 822ABDD4, slot 822ABDE0.
+[functions."0x8257A478"]
+size = 0x70
+
+# 8258D3D0: object table 822AC5A4, slot 822AC5A8.
+[functions."0x8258D3D0"]
+size = 0x30
+
+# 8263F5D8: object table 82003BE8, slot 82003C20.
+[functions."0x8263F5D8"]
+size = 0x24
+
+# 826BFBB0: object table 822B69E0, slot 822B6A08.
+[functions."0x826BFBB0"]
+size = 0x2C
+
+# 82818D10: opcode callback table 82D61E98; original dispatch 82813FEC.
+[functions."0x82818D10"]
+size = 0x70
+
+# 8281C050: opcode callback table 82D61E98; original dispatch 82813FEC.
+[functions."0x8281C050"]
+size = 0x38
+
+# 8281C088: opcode callback table 82D61E98; original dispatch 82813FEC.
+[functions."0x8281C088"]
+size = 0x38
+
+# 828A40D0: object table 822BEC70, slot 822BEC80.
+[functions."0x828A40D0"]
+size = 0x10
+
+# 828A4168: object table 822BEC70, slot 822BEC9C.
+[functions."0x828A4168"]
+size = 0x10
+
+# 828BE8F0: object table 822BEB5C, slot 822BEB7C.
+[functions."0x828BE8F0"]
+size = 0x50
+
+# 828F73E8: object table 822C0F40, slot 822C0F9C.
+[functions."0x828F73E8"]
+size = 0x28
+
+# 82AA6BF8: object table 822C63D0, slot 822C6400.
+[functions."0x82AA6BF8"]
+size = 0x40
+
+# 82AA6C38: object table 822C6404, slot 822C6434.
+[functions."0x82AA6C38"]
+size = 0x40
+
+# 82AA8670: object table 822C69C8, slot 822C69F8.
+[functions."0x82AA8670"]
+size = 0x50
+
+# 82AD1C58: object table 82006688, slot 820066D8.
+[functions."0x82AD1C58"]
+size = 0x54

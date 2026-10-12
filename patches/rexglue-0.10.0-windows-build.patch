@@ -1,0 +1,29 @@
+diff --git a/src/system/CMakeLists.txt b/src/system/CMakeLists.txt
+index fc46d86..961a4b6 100644
+--- a/src/system/CMakeLists.txt
++++ b/src/system/CMakeLists.txt
+@@ -71,6 +71,8 @@ rex_target_pch(rexruntime
+ target_include_directories(rexruntime PUBLIC
+     $<BUILD_INTERFACE:${REXGLUE_ROOT}/include>
+     $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
++    # Public UI headers include imgui.h; needed by the GPU plugin as well.
++    $<BUILD_INTERFACE:${REXGLUE_ROOT}/thirdparty/imgui>
+     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+ )
+ target_include_directories(rexruntime PRIVATE
+diff --git a/thirdparty/CMakeLists.txt b/thirdparty/CMakeLists.txt
+index f102b56..8446834 100644
+--- a/thirdparty/CMakeLists.txt
++++ b/thirdparty/CMakeLists.txt
+@@ -125,8 +125,9 @@ target_include_directories(aes128 PUBLIC
+ target_compile_options(aes128 PRIVATE -w)
+ 
+ # libmspack - LZX decompression (only lzxd.c needed for XEX decompression)
+-# Uses cabextract version which has all needed headers in one place
+-set(MSPACK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libmspack/cabextract/mspack")
++# Use real sources: cabextract/mspack contains symlinks that Windows Git may
++# check out as text files. Matches upstream fix proposed in rexglue-sdk#422.
++set(MSPACK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libmspack/libmspack/mspack")
+ add_library(mspack STATIC
+     ${MSPACK_DIR}/lzxd.c
+ )

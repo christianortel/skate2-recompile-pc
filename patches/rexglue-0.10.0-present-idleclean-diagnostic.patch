@@ -1,0 +1,184 @@
+--- a/src/graphics/d3d12/command_processor.cpp
++++ b/src/graphics/d3d12/command_processor.cpp
+@@ -10,6 +10,7 @@
+  */
+ 
+ #include <algorithm>
++#include <chrono>
+ #include <cstdarg>
+ #include <cstring>
+ #include <sstream>
+@@ -46,6 +47,11 @@
+ REXCVAR_DEFINE_BOOL(d3d12_submit_on_primary_buffer_end, true, "GPU/D3D12",
+                     "Submit command list when PM4 primary buffer ends")
+     .lifecycle(rex::cvar::Lifecycle::kHotReload);
++
++REXCVAR_DEFINE_BOOL(d3d12_present_idleclean_sync, false, "GPU/D3D12",
++                    "Diagnostic: await submitted rendering for WAIT_UNTIL 3D idle-clean only "
++                    "between closed guest frames. Other WAIT_UNTIL cases are unchanged.")
++    .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
+ 
+ namespace rex::graphics::d3d12 {
+ 
+@@ -861,6 +867,9 @@
+   }
+   InvalidateAllVertexBufferResidency();
+   UpdateDebugMarkersEnabled();
++  // Snapshot through the locked registry once on the command worker. Pending
++  // UI edits to this restart-required flag must not race live packet handling.
++  present_idleclean_sync_enabled_ = rex::cvar::Query<bool>("d3d12_present_idleclean_sync");
+ 
+   const ui::d3d12::D3D12Provider& provider = GetD3D12Provider();
+   ID3D12Device* device = provider.GetDevice();
+@@ -1627,6 +1636,14 @@
+ }
+ 
+ void D3D12CommandProcessor::ShutdownContext() {
++  if (present_idleclean_diagnostic_.hits) {
++    REXGPU_INFO("Present idle-clean diagnostic totals: hits={} synchronized={} wait_calls={} "
++                "already_complete={} skipped={} "
++                "failed={} waited_us={}", present_idleclean_diagnostic_.hits,
++                present_idleclean_diagnostic_.synchronized, present_idleclean_diagnostic_.wait_calls,
++                present_idleclean_diagnostic_.already_complete, present_idleclean_diagnostic_.skipped,
++                present_idleclean_diagnostic_.failed, present_idleclean_diagnostic_.waited_us);
++  }
+   AwaitAllQueueOperationsCompletion();
+   InvalidateAllVertexBufferResidency();
+   ShutdownOcclusionQueryResources();
+@@ -1770,6 +1787,7 @@
+ 
+ void D3D12CommandProcessor::WriteRegister(uint32_t index, uint32_t value) {
+   CommandProcessor::WriteRegister(index, value);
++  MaybeSynchronizePresentIdleclean(index, value);
+ 
+   if (index >= XE_GPU_REG_SHADER_CONSTANT_000_X && index <= XE_GPU_REG_SHADER_CONSTANT_511_W) {
+     if (frame_open_) {
+@@ -1798,6 +1816,105 @@
+                                                   6);
+     }
+     InvalidateVertexBufferResidency((index - XE_GPU_REG_SHADER_CONSTANT_FETCH_00_0) / 2);
++  }
++}
++
++void D3D12CommandProcessor::MaybeSynchronizePresentIdleclean(uint32_t index, uint32_t value) {
++  // PM4 register writes run on the command worker. This is deliberately not a
++  // complete WAIT_UNTIL implementation: do not close partial frames or queries.
++  if (index != XE_GPU_REG_WAIT_UNTIL || !(value & (UINT32_C(1) << 17)) ||
++      !present_idleclean_sync_enabled_) {
++    return;
++  }
++  auto& stats = present_idleclean_diagnostic_;
++  ++stats.hits;
++  const uint64_t current = submission_current_;
++  const uint64_t target = current ? current - 1 : 0;
++  const uint64_t completed_before = submission_completed_;
++  const char* reason = "none";
++  uint32_t skip_bit = 0;
++  if (device_removed_) {
++    reason = "device_removed"; skip_bit = 1u << 0;
++  } else if (!submission_fence_ || !fence_completion_event_) {
++    reason = "fence_unavailable"; skip_bit = 1u << 1;
++  } else if (current <= 1) {
++    reason = "no_submitted_frame"; skip_bit = 1u << 2;
++  } else if (frame_open_) {
++    reason = "frame_open"; skip_bit = 1u << 3;
++  } else if (submission_open_) {
++    reason = "submission_open"; skip_bit = 1u << 4;
++  } else if (active_occlusion_query_.valid) {
++    reason = "occlusion_query_active"; skip_bit = 1u << 5;
++  } else if (scratch_buffer_used_) {
++    reason = "scratch_buffer_active"; skip_bit = 1u << 6;
++  } else if (queue_operations_done_since_submission_signal_) {
++    reason = "out_of_submission_queue_operations"; skip_bit = 1u << 7;
++  }
++
++  uint64_t waited_us = 0;
++  uint64_t completed_after = completed_before;
++  bool log_detail = false;
++  if (skip_bit) {
++    ++stats.skipped;
++    for (uint32_t i = 0; i < stats.skipped_by_reason.size(); ++i) {
++      if (skip_bit == (1u << i)) ++stats.skipped_by_reason[i];
++    }
++    log_detail = !(stats.logged_skip_reasons & skip_bit);
++    stats.logged_skip_reasons |= skip_bit;
++  } else {
++    const auto start = std::chrono::steady_clock::now();
++    // Use a bounded native wait, not the general helper's infinite wait. Never
++    // pass current to that helper: it may close a query/submission or enter the
++    // separate out-of-submission queue-operation branch.
++    const uint64_t actual_before = submission_fence_->GetCompletedValue();
++    HRESULT event_result = S_OK;
++    DWORD wait_result = WAIT_OBJECT_0;
++    if (actual_before != UINT64_MAX && actual_before < target) {
++      event_result = submission_fence_->SetEventOnCompletion(target, fence_completion_event_);
++      if (SUCCEEDED(event_result)) {
++        ++stats.wait_calls;
++        wait_result = WaitForSingleObject(fence_completion_event_, 5000);
++      }
++    }
++    completed_after = actual_before == UINT64_MAX ? actual_before
++                                                 : submission_fence_->GetCompletedValue();
++    waited_us = uint64_t(std::chrono::duration_cast<std::chrono::microseconds>(
++        std::chrono::steady_clock::now() - start).count());
++    stats.waited_us += waited_us;
++    // Do not treat device-removal's UINT64_MAX or the helper's cached index as
++    // successful synchronization. Stop instead of releasing guest completion.
++    if (FAILED(event_result) || wait_result != WAIT_OBJECT_0 ||
++        completed_after == UINT64_MAX || completed_after < target) {
++      ++stats.failed;
++      device_removed_ = true;
++      REXGPU_ERROR("Present idle-clean diagnostic FAILED: value={:08X} current={} target={} "
++                   "completed_before={} actual_before={} completed_after={} waited_us={} hits={} "
++                   "event_hresult={:08X} wait_result={:08X}",
++                   value, current, target, completed_before, actual_before, completed_after,
++                   waited_us, stats.hits, uint32_t(event_result), uint32_t(wait_result));
++      rex::FatalError("The optional present idle-clean diagnostic could not verify GPU completion.");
++    }
++    // Reclaim only after independently verifying actual completion. Target0
++    // cannot enter EndSubmission or either wait branch because current>=2.
++    CheckSubmissionFence(0);
++    ++stats.synchronized;
++    if (actual_before >= target) ++stats.already_complete;
++    log_detail = stats.synchronized <= 8;
++  }
++  // First eight successes, each skip reason once, and at most thirty periodic
++  // summaries spanning menus and gameplay. No per-frame or unbounded log stream.
++  if (log_detail || (stats.hits <= 18000 && stats.hits % 600 == 0)) {
++    REXGPU_INFO("Present idle-clean diagnostic: value={:08X} current={} target={} "
++                "completed_before={} completed_after={} waited_us={} skipped_reason={} "
++                "hits={} synchronized={} wait_calls={} already_complete={} skipped={} failed={} "
++                "total_waited_us={} skipped_by_reason=[removed:{},fence:{},empty:{},frame:{},"
++                "submission:{},query:{},scratch:{},queue:{}]",
++                value, current, target, completed_before, completed_after, waited_us, reason,
++                stats.hits, stats.synchronized, stats.wait_calls, stats.already_complete,
++                stats.skipped, stats.failed, stats.waited_us,
++                stats.skipped_by_reason[0], stats.skipped_by_reason[1], stats.skipped_by_reason[2],
++                stats.skipped_by_reason[3], stats.skipped_by_reason[4], stats.skipped_by_reason[5],
++                stats.skipped_by_reason[6], stats.skipped_by_reason[7]);
+   }
+ }
+ 
+--- a/include/rex/graphics/d3d12/command_processor.h
++++ b/include/rex/graphics/d3d12/command_processor.h
+@@ -415,6 +415,20 @@
+   void InvalidateAllVertexBufferResidency();
+   void InvalidateVertexBufferResidency(uint32_t vfetch_index);
+   void InvalidateVertexBufferResidencyRange(uint32_t first_vfetch, uint32_t last_vfetch);
++  void MaybeSynchronizePresentIdleclean(uint32_t index, uint32_t value);
++
++  struct PresentIdlecleanDiagnostic {
++    uint64_t hits = 0;
++    uint64_t synchronized = 0;
++    uint64_t wait_calls = 0;
++    uint64_t already_complete = 0;
++    uint64_t skipped = 0;
++    uint64_t failed = 0;
++    uint64_t waited_us = 0;
++    uint32_t logged_skip_reasons = 0;
++    std::array<uint64_t, 8> skipped_by_reason = {};
++  } present_idleclean_diagnostic_;
++  bool present_idleclean_sync_enabled_ = false;
+ 
+   void WriteGammaRampSRV(bool is_pwl, D3D12_CPU_DESCRIPTOR_HANDLE handle) const;
+ 

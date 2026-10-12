@@ -1,0 +1,47 @@
+diff --git a/src/core/cvar.cpp b/src/core/cvar.cpp
+index 228728d..4c269e6 100644
+--- a/src/core/cvar.cpp
++++ b/src/core/cvar.cpp
+@@ -14,6 +14,7 @@
+ #include <fstream>
+ #include <mutex>
+ #include <optional>
++#include <sstream>
+ #include <string_view>
+ #include <unordered_map>
+ 
+@@ -535,13 +536,24 @@ std::vector<std::string> ListModifiedFlags() {
+   return result;
+ }
+ 
++namespace {
++std::string SerializeStringValue(std::string value) {
++  const toml::value<std::string> node{std::move(value)};
++  std::ostringstream stream;
++  // Keep one basic string per line; TOML owns escaping for paths, quotes,
++  // control characters and Unicode instead of writing an unescaped literal.
++  stream << toml::toml_formatter{node, toml::format_flags::allow_unicode_strings};
++  return stream.str();
++}
++}  // namespace
++
+ std::string SerializeToTOML() {
+   std::lock_guard lock(GetRegistryMutex());
+   std::string result;
+   for (const auto& entry : GetRegistryStorage()) {
+     if (entry.getter() != entry.default_value) {
+       if (entry.type == FlagType::String) {
+-        result += entry.name + " = \"" + entry.getter() + "\"\n";
++        result += entry.name + " = " + SerializeStringValue(entry.getter()) + "\n";
+       } else {
+         result += entry.name + " = " + entry.getter() + "\n";
+       }
+@@ -556,7 +568,7 @@ std::string SerializeToTOML(std::string_view category) {
+   for (const auto& entry : GetRegistryStorage()) {
+     if (entry.category == category && entry.getter() != entry.default_value) {
+       if (entry.type == FlagType::String) {
+-        result += entry.name + " = \"" + entry.getter() + "\"\n";
++        result += entry.name + " = " + SerializeStringValue(entry.getter()) + "\n";
+       } else {
+         result += entry.name + " = " + entry.getter() + "\n";
+       }

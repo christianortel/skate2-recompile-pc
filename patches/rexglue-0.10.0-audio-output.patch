@@ -1,0 +1,116 @@
+diff --git a/src/audio/sdl/sdl_audio_driver.cpp b/src/audio/sdl/sdl_audio_driver.cpp
+index 20a2cd8..ade6f6e 100644
+--- a/src/audio/sdl/sdl_audio_driver.cpp
++++ b/src/audio/sdl/sdl_audio_driver.cpp
+@@ -25,6 +25,9 @@
+ #include <SDL3/SDL.h>
+ 
+ REXCVAR_DEFINE_BOOL(audio_mute, false, "Audio", "Mute audio output");
++REXCVAR_DEFINE_STRING(audio_output_device, "", "Audio",
++                      "Output device (save and restart to apply)")
++    .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
+ 
+ namespace rex::audio::sdl {
+ 
+@@ -49,13 +52,34 @@ bool SDLAudioDriver::Initialize() {
+   }
+   sdl_initialized_ = true;
+ 
++  // Open a physical endpoint when the user chooses one, so a newly connected
++  // controller cannot redirect this stream by becoming the Windows default.
++  // Device instance IDs are temporary; resolve the saved display name each run.
++  SDL_AudioDeviceID output_device = SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK;
++  const auto selected_name = REXCVAR_GET(audio_output_device);
++  if (!selected_name.empty()) {
++    int device_count = 0;
++    auto* devices = SDL_GetAudioPlaybackDevices(&device_count);
++    for (int i = 0; devices && i < device_count; ++i) {
++      const char* name = SDL_GetAudioDeviceName(devices[i]);
++      if (name && selected_name == name) {
++        output_device = devices[i];
++        break;
++      }
++    }
++    SDL_free(devices);
++    if (output_device == SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK) {
++      REXAPU_WARN("Selected audio output '{}' is unavailable; using system default", selected_name);
++    }
++  }
++
+   SDL_AudioSpec desired_spec = {};
+   SDL_AudioSpec obtained_spec = {};
+   desired_spec.freq = frame_frequency_;
+   desired_spec.format = SDL_AUDIO_F32LE;
+   desired_spec.channels = frame_channels_;
+   sdl_device_channels_ = frame_channels_;
+-  sdl_stream_ = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &desired_spec,
++  sdl_stream_ = SDL_OpenAudioDeviceStream(output_device, &desired_spec,
+                                           SDLCallback, this);
+   if (!sdl_stream_) {
+     REXAPU_ERROR("SDL_OpenAudioDeviceStream() failed: {}", SDL_GetError());
+@@ -80,7 +104,7 @@ bool SDLAudioDriver::Initialize() {
+     sdl_stream_ = nullptr;
+     desired_spec.channels = 2;
+     sdl_device_channels_ = 2;
+-    sdl_stream_ = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &desired_spec,
++    sdl_stream_ = SDL_OpenAudioDeviceStream(output_device, &desired_spec,
+                                             SDLCallback, this);
+     if (!sdl_stream_) {
+       REXAPU_ERROR("SDL_OpenAudioDeviceStream() stereo fallback failed: {}", SDL_GetError());
+@@ -100,6 +124,9 @@ bool SDLAudioDriver::Initialize() {
+   REXAPU_INFO("audio endpoint '{}': {} ch, {} Hz, format 0x{:04X}; submitting {} ch",
+               device_name ? device_name : "?", obtained_spec.channels, obtained_spec.freq,
+               static_cast<uint32_t>(obtained_spec.format), static_cast<int>(sdl_device_channels_));
++  REXAPU_INFO("audio output routing: {}",
++              output_device == SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK ? "follows system default"
++                                                                 : "fixed to selected device");
+ 
+   if (!SDL_ResumeAudioDevice(sdl_device)) {
+     REXAPU_ERROR("SDL_ResumeAudioDevice() failed: {}", SDL_GetError());
+diff --git a/src/ui/overlay/settings_overlay.cpp b/src/ui/overlay/settings_overlay.cpp
+index 4ede107..0a7dcf0 100644
+--- a/src/ui/overlay/settings_overlay.cpp
++++ b/src/ui/overlay/settings_overlay.cpp
+@@ -15,6 +15,7 @@
+ #include <rex/string/numeric.h>
+ #include <rex/ui/keybinds.h>
+ #include <imgui.h>
++#include <SDL3/SDL_audio.h>
+ 
+ #include <algorithm>
+ #include <map>
+@@ -325,6 +326,34 @@ void SettingsDialog::OnDraw(ImGuiIO& /*io*/) {
+     const char* display_label =
+         (!entry.description.empty()) ? entry.description.c_str() : entry.name.c_str();
+ 
++    if (entry.name == "audio_output_device") {
++      ImGui::TextUnformatted("Output device");
++      ImGui::SetNextItemWidth(-1.0f);
++      if (ImGui::BeginCombo("##output", current_val.empty() ? "System default" : current_val.c_str())) {
++        if (ImGui::Selectable("System default", current_val.empty())) {
++          rex::cvar::SetFlagByName(entry.name, "");
++        }
++        int count = 0;
++        auto* devices = SDL_GetAudioPlaybackDevices(&count);
++        for (int i = 0; devices && i < count; ++i) {
++          const char* name = SDL_GetAudioDeviceName(devices[i]);
++          if (!name) continue;
++          ImGui::PushID(i);
++          if (ImGui::Selectable(name, current_val == name)) {
++            rex::cvar::SetFlagByName(entry.name, name);
++          }
++          ImGui::PopID();
++        }
++        SDL_free(devices);
++        ImGui::EndCombo();
++      }
++      ImGui::TextWrapped("Choose a speaker or headset to keep audio there when a controller connects.");
++      ImGui::TextDisabled("Save below, then restart the game to apply.");
++      if (read_only) ImGui::EndDisabled();
++      ImGui::PopID();
++      continue;
++    }
++
+     if (is_keybind_category(entry.category)) {
+       // Grey out controller keybinds when MnK mode is disabled
+       bool mnk_disabled =

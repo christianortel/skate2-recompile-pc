@@ -1,0 +1,31 @@
+# Original indirect entries verified during normal-launch diagnosis.
+# 0x825A0A08 was reached in skate2_006.log. Both complete tail-dispatch leaves
+# occur in vtable 0x822ADB50, stored at [r3] by 0x826C6F98. Neither byte range
+# overlaps actual analysis blocks or detected jump tables. See
+# reports/missing-entry-825A0A08-disassembly.txt and its table-store report.
+[functions."0x825A0A08"]
+size = 0x20
+
+[functions."0x825A0A28"]
+size = 0x24
+
+# Runtime 008 called this original four-instruction argument-swap/tail wrapper.
+# Constructor 0x82B46900 constructs this callback address and stores it in an
+# object; the tail target 0x82B46880 is registered. See missing-entry-82B467E8 reports.
+[functions."0x82B467E8"]
+size = 0x10
+
+# Complete original method, including the local true-return block at 0x82367978.
+# That block was incorrectly split into a speculative gap-fill function.
+# Table 0x82002870, slot 0x820028A8, is installed by constructor 0x827770B0.
+# See reports/indirect-82367930-reconciliation.json; verify absorption on codegen.
+[functions."0x82367930"]
+size = 0x50
+
+# Free Skate loading callback reached in run 012. The original nine-instruction
+# body includes its null-branch join and tails to registered 0x82473CC0.
+# Address constructed at 0x8250B950/5C and stored on the stack at 0x8250B960;
+# runtime caller 0x827B01FC loads the callback from a dispatch record at +32.
+# See reports/missing-entry-8250F978-verified.json and matching crash dump.
+[functions."0x8250F978"]
+size = 0x24

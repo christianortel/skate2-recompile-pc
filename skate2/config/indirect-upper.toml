@@ -1,0 +1,127 @@
+# Reviewed original callable entries; original game bytes remain unchanged.
+# Evidence: reports/indirect-entry-high-verified.json (31 entries).
+# No known instruction blocks or detected jump-table entries overlap these bodies.
+
+# 82B05070: table 82001808, slot 82001820; original object store 82B03D5C.
+[functions."0x82B05070"]
+size = 0x14
+
+# 82B10EA8: table 822C912C, slot 822C912C; original object store 82B09E2C.
+[functions."0x82B10EA8"]
+size = 0x8
+
+# 82B111B0: table 820054F0, slot 82005568; original object store 82B190D4.
+[functions."0x82B111B0"]
+size = 0x8
+
+# 82B1F910: table 822C9988, slot 822C9988; original object store 82B190F4.
+[functions."0x82B1F910"]
+size = 0x8
+
+# 82B1F950: table 82003648, slot 82003648; original object store 82B190EC.
+[functions."0x82B1F950"]
+size = 0x8
+
+# 82B4B658: table 822CA9D8, slot 822CA9EC; original object store 82B4B498.
+[functions."0x82B4B658"]
+size = 0x18
+
+# 82B4B670: table 822CA9D8, slot 822CA9F0; original object store 82B4B498.
+[functions."0x82B4B670"]
+size = 0x18
+
+# 82B4B688: table 822CA9D8, slot 822CA9F4; original object store 82B4B498.
+[functions."0x82B4B688"]
+size = 0x18
+
+# 82B4BA88: table 822CAA18, slot 822CAA2C; original object store 82B4C898.
+[functions."0x82B4BA88"]
+size = 0x18
+
+# 82B4BAA0: table 822CAA18, slot 822CAA30; original object store 82B4C898.
+[functions."0x82B4BAA0"]
+size = 0x18
+
+# 82B4BAB8: table 822CAA18, slot 822CAA34; original object store 82B4C898.
+[functions."0x82B4BAB8"]
+size = 0x18
+
+# 82B51AE8: table 822CAA18, slot 822CAA4C; original object store 82B4C898.
+[functions."0x82B51AE8"]
+size = 0x40
+
+# 82BC6420: table 822CB934, slot 822CB938; original object store 82BC62E8.
+[functions."0x82BC6420"]
+size = 0x30
+
+# 82BFC7C8: table 822CCEBC, slot 822CCEBC; original object store 82BFAF04.
+[functions."0x82BFC7C8"]
+size = 0x8
+
+# 82BFC7F0: table 8200265C, slot 82002660; original object store 82BFA6E4.
+[functions."0x82BFC7F0"]
+size = 0x8
+
+# 82BFC7F8: table 822CCF04, slot 822CCF04; original object store 82BFAF0C.
+[functions."0x82BFC7F8"]
+size = 0x8
+
+# 82BFC810: table 822CC960, slot 822CC960; original object store 82BF9640.
+[functions."0x82BFC810"]
+size = 0x8
+
+# 82BFC838: table 82002154, slot 82002184; original object store 82BFA6F0.
+[functions."0x82BFC838"]
+size = 0x8
+
+# 82BFC840: table 82002154, slot 82002158; original object store 82BFA6F0.
+[functions."0x82BFC840"]
+size = 0x8
+
+# 82BFC848: table 822CC9B4, slot 822CC9B4; original object store 82BF9638.
+[functions."0x82BFC848"]
+size = 0x8
+
+# 82BFC878: table 822CCE68, slot 822CCE68; original object store 82BFAEF8.
+[functions."0x82BFC878"]
+size = 0x8
+
+# 82BFC898: table 822CCAC8, slot 822CCAC8; original object store 82BFA37C.
+[functions."0x82BFC898"]
+size = 0x8
+
+# 82BFD460: table 82002C30, slot 82002C60; original object store 82C0B124.
+[functions."0x82BFD460"]
+size = 0x8
+
+# 82BFD490: table 82002D00, slot 82002D40; original object store 82C0B2BC.
+[functions."0x82BFD490"]
+size = 0xC
+
+# 82C0ECA8: table 82006780, slot 82006880; original object store 82C0AED0.
+[functions."0x82C0ECA8"]
+size = 0x24
+
+# 82C1A0B8: table 822CDB40, slot 822CDB40; original object store 82C13028.
+[functions."0x82C1A0B8"]
+size = 0x8
+
+# 82C1A0C8: table 822CDD40, slot 822CDD40; original object store 82C1307C.
+[functions."0x82C1A0C8"]
+size = 0x8
+
+# 82C1A108: table 820015B0, slot 820015B0; original object store 82C0AEEC.
+[functions."0x82C1A108"]
+size = 0x8
+
+# 82C1A160: table 82005D68, slot 82005D68; original object store 82C0AEFC.
+[functions."0x82C1A160"]
+size = 0x8
+
+# 82C1A1B0: table 822CD370, slot 822CD370; original object store 82C0AED8.
+[functions."0x82C1A1B0"]
+size = 0x8
+
+# 82C1A228: table 822CD378, slot 822CD378; original object store 82C0AEDC.
+[functions."0x82C1A228"]
+size = 0x8

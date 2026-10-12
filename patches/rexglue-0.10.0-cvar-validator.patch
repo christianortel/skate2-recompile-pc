@@ -1,0 +1,60 @@
+diff --git a/src/core/cvar.cpp b/src/core/cvar.cpp
+--- a/src/core/cvar.cpp
++++ b/src/core/cvar.cpp
+@@ -21,6 +21,7 @@
+ #include <CLI/CLI.hpp>
+ 
+ #include <rex/cvar.h>
++#include <rex/cvar_validation.h>
+ #include <rex/logging.h>
+ #include <rex/platform/env.h>
+ 
+@@ -344,6 +345,26 @@
+   return SetFlagFromSource(name, value, Source::kRuntime) == ApplyResult::kApplied;
+ }
+ 
++bool SetFlagValidator(std::string_view name,
++                      std::function<bool(std::string_view)> validator) {
++  if (!validator) {
++    return false;
++  }
++  std::lock_guard lock(GetRegistryMutex());
++  auto& index = GetRegistryIndex();
++  const auto it = index.find(std::string(name));
++  if (it == index.end()) {
++    return false;
++  }
++  auto& existing = GetRegistryStorage()[it->second].constraints.custom_validator;
++  auto previous = existing;
++  existing = [previous = std::move(previous), validator = std::move(validator)](
++                 std::string_view value) {
++    return (!previous || previous(value)) && validator(value);
++  };
++  return true;
++}
++
+ bool SetFlagFromCommandLine(std::string_view name, std::string_view value) {
+   return SetFlagFromSource(name, value, Source::kCommandLine) != ApplyResult::kRejected;
+ }
+diff --git a/include/rex/cvar_validation.h b/include/rex/cvar_validation.h
+new file mode 100644
+--- /dev/null
++++ b/include/rex/cvar_validation.h
+@@ -0,0 +1,17 @@
++#pragma once
++
++#include <functional>
++#include <string_view>
++
++namespace rex::cvar {
++
++// Add a validator to an existing flag while holding the registry lock. Any
++// previous validator is retained and runs first. Returns false for an unknown
++// flag or an empty validator. Does not change or revalidate the current value.
++// Validators run before the setter/source/change callbacks on validated writes;
++// they must not mutate the registry or block. Initialization and direct storage
++// assignments may bypass validation, so validate initial values separately.
++bool SetFlagValidator(std::string_view name,
++                      std::function<bool(std::string_view)> validator);
++
++}  // namespace rex::cvar

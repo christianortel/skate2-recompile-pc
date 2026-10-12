@@ -1,0 +1,76 @@
+diff --git a/resources/templates/codegen/pch_h.inja b/resources/templates/codegen/pch_h.inja
+index 68274d2..3775ac3 100644
+--- a/resources/templates/codegen/pch_h.inja
++++ b/resources/templates/codegen/pch_h.inja
+@@ -32,6 +32,7 @@
+ #include <rex/ppc.h>
+ #include <rex/image_info.h>
+ #include <rex/logging.h>
++#include <rex/math.h>
+ #include <rex/chrono/clock.h>
+ #include <rex/perf/counter.h>
+ #include <rex/thread/mutex.h>
+diff --git a/src/codegen/builders/vector.cpp b/src/codegen/builders/vector.cpp
+index cbdd7f7..74c8a59 100644
+--- a/src/codegen/builders/vector.cpp
++++ b/src/codegen/builders/vector.cpp
+@@ -1322,32 +1322,36 @@ bool build_vpkd3d128(BuilderContext& ctx) {
+       break;
+     }
+ 
+-    case 5:  // float16_4
++    case 5:  // FLOAT16_4
+     {
+-      // Pack 4 elements into 64 bits (4 x 16-bit floats)
+-      // Guest element 0 goes to highest 16-bit position, element 3 to lowest
+-      // Output u16 index = (3-i) + 2*shift for element i
+-      if (ctx.insn.operands[3] != 2 || ctx.insn.operands[4] > 2)
+-        REXCODEGEN_WARN("Unexpected float16_4 pack instruction at {:X}", ctx.base);
++      const uint32_t mask = ctx.insn.operands[3];
++      const uint32_t shift = ctx.insn.operands[4];
++      if (mask == 0 || mask > 3 || shift > 3) {
++        REXCODEGEN_WARN("Invalid FLOAT16_4 pack control at {:X}", ctx.base);
++        return false;
++      }
+ 
++      // Xenia Canary 11815400cdb413ed77e4f2a1efd168b9c9967077:
++      // FLOAT16_4 uses Xenos extended-range halfs, flushes denormals, and
++      // rounds to nearest even. Convert every source lane before touching VD
++      // so overlapping source/destination registers are safe for every shift.
+       for (size_t i = 0; i < 4; i++) {
+-        size_t srcIdx = 3 - i;  // Guest element i is at host array index 3-i
+-        size_t dstIdx = (3 - i) + (2 * ctx.insn.operands[4]);  // Output also reversed
+-        ctx.println("\t{}.u32 = ({}.u32[{}]&0x7FFFFFFF);", ctx.temp(), ctx.v(ctx.insn.operands[1]),
+-                    srcIdx);
+-        ctx.println(
+-            "\t{0}.u8[0] = ({1}.f32 != {1}.f32) || ({1}.f32 > 65504.0f) ? 0xFF : "
+-            "(({2}.u32[{3}]&0x7f800000)>>23);",
+-            ctx.v_temp(), ctx.temp(), ctx.v(ctx.insn.operands[1]), srcIdx);
+-        ctx.println("\t{}.u16 = {}.u8[0] != 0xFF ? (({}.u32[{}]&0x7FE000)>>13) : 0x0;", ctx.temp(),
+-                    ctx.v_temp(), ctx.v(ctx.insn.operands[1]), srcIdx);
+-        ctx.println(
+-            "\t{0}.u16[{1}] = {2}.u8[0] != 0xFF ? ({2}.u8[0] > 0x70 ? "
+-            "((({2}.u8[0]-0x70)<<10)+{3}.u16) : (0x71-{2}.u8[0] > 31 ? 0x0 : "
+-            "((0x400+{3}.u16)>>(0x71-{2}.u8[0])))) : 0x7FFF;",
+-            ctx.v(ctx.insn.operands[0]), dstIdx, ctx.v_temp(), ctx.temp());
+-        ctx.println("\t{}.u16[{}] |= (({}.u32[{}]&0x80000000)>>16);", ctx.v(ctx.insn.operands[0]),
+-                    dstIdx, ctx.v(ctx.insn.operands[1]), srcIdx);
++        ctx.println("\t{}.u16[{}] = rex::float_to_xenos_half({}.f32[{}], false, true);",
++                    ctx.v_temp(), 3 - i, ctx.v(ctx.insn.operands[1]), 3 - i);
++      }
++
++      // Match InstrEmit_vpkd3d128's word permutation in Xenia. Mask 3 is
++      // identical to mask 2 for shifts 0..2; at shift 3 it selects the upper
++      // packed word into the low destination word instead of wrapping.
++      if (mask == 3 && shift == 3) {
++        ctx.println("\t{}.u32[0] = {}.u32[1];", ctx.v(ctx.insn.operands[0]), ctx.v_temp());
++      } else {
++        ctx.println("\t{}.u32[{}] = {}.u32[0];", ctx.v(ctx.insn.operands[0]), shift,
++                    ctx.v_temp());
++        if (mask >= 2 && shift < 3) {
++          ctx.println("\t{}.u32[{}] = {}.u32[1];", ctx.v(ctx.insn.operands[0]), shift + 1,
++                      ctx.v_temp());
++        }
+       }
+       break;
+     }

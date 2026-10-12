@@ -1,0 +1,44 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 9b3cdf5..6de2cf0 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -23,12 +23,16 @@ option(REXGLUE_ENABLE_SANITIZERS "Enable UndefinedBehaviorSanitizer" OFF)
+ option(REXGLUE_ENABLE_FIDELITYFX "Enable optional AMD FidelityFX integration (experimental)" OFF)
+ option(REXGLUE_ENABLE_TRACY                "Enable Tracy profiler integration" ON)
+ option(REXGLUE_ENABLE_PERF_COUNTERS        "Enable lightweight perf counter registry and overlay" ON)
+-# Propagate profiling defines globally (compiled out in Release)
++option(REXGLUE_ENABLE_RELEASE_PERF_COUNTERS "Enable lightweight perf counters in Release (requires REXGLUE_ENABLE_PERF_COUNTERS)" OFF)
++# Tracy remains compiled out in Release. Lightweight counters require a separate
++# Release opt-in, shared with rexruntime's exported interface definitions.
+ if(REXGLUE_ENABLE_TRACY)
+     add_compile_definitions($<$<NOT:$<CONFIG:Release>>:REXGLUE_ENABLE_PROFILING>)
+ endif()
+ if(REXGLUE_ENABLE_PERF_COUNTERS)
+-    add_compile_definitions($<$<NOT:$<CONFIG:Release>>:REXGLUE_ENABLE_PERF_COUNTERS>)
++    set(REXGLUE_PERF_COUNTERS_DEFINE
++        "$<$<OR:$<NOT:$<CONFIG:Release>>,$<BOOL:${REXGLUE_ENABLE_RELEASE_PERF_COUNTERS}>>:REXGLUE_ENABLE_PERF_COUNTERS>")
++    add_compile_definitions("${REXGLUE_PERF_COUNTERS_DEFINE}")
+ endif()
+ 
+ # Graphics backend selection
+@@ -283,6 +287,7 @@ message(STATUS "  Graphics: D3D12=${REXGLUE_USE_D3D12} Vulkan=${REXGLUE_USE_VULK
+ message(STATUS "  FidelityFX: ${REXGLUE_ENABLE_FIDELITYFX}")
+ message(STATUS "  Tracy: ${REXGLUE_ENABLE_TRACY}")
+ message(STATUS "  Perf Counters: ${REXGLUE_ENABLE_PERF_COUNTERS}")
++message(STATUS "  Release Perf Counters: ${REXGLUE_ENABLE_RELEASE_PERF_COUNTERS}")
+ message(STATUS "===========================================")
+ 
+ # SDK install/export rules (skipped when consumed as a subdirectory)
+diff --git a/src/system/CMakeLists.txt b/src/system/CMakeLists.txt
+index fc46d86..306d4ae 100644
+--- a/src/system/CMakeLists.txt
++++ b/src/system/CMakeLists.txt
+@@ -102,7 +104,7 @@ endif()
+ 
+ if(REXGLUE_ENABLE_PERF_COUNTERS)
+     target_compile_definitions(rexruntime PUBLIC
+-        $<$<NOT:$<CONFIG:Release>>:REXGLUE_ENABLE_PERF_COUNTERS>)
++        "${REXGLUE_PERF_COUNTERS_DEFINE}")
+ endif()
+ 
+ if(WIN32)

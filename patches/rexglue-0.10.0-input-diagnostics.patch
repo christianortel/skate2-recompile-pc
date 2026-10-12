@@ -1,0 +1,205 @@
+diff --git a/src/input/mnk/mnk_input_driver.cpp b/src/input/mnk/mnk_input_driver.cpp
+index 3f9422d..4c9c5cb 100644
+--- a/src/input/mnk/mnk_input_driver.cpp
++++ b/src/input/mnk/mnk_input_driver.cpp
+@@ -18,12 +18,15 @@
+ #include <rex/ui/window.h>
+ 
+ #include <algorithm>
++#include <chrono>
+ #include <cmath>
+ #include <cstdlib>
+ #include <cstring>
+ #include <string_view>
+ 
+ REXCVAR_DEFINE_BOOL(mnk_mode, false, "Input", "Enable keyboard/mouse controller emulation");
++REXCVAR_DEFINE_BOOL(input_diag, false, "Input",
++                    "Bounded passive Start/A keyboard and MnK poll diagnostics");
+ REXCVAR_DEFINE_BOOL(mnk_mouse, false, "Input",
+                     "Use the mouse for the right stick. Off means the right stick comes "
+                     "from the keybind_rstick_* keys only");
+@@ -137,6 +140,84 @@ bool TokenPressed(const bool (&key_down)[256], std::string_view token, uint8_t l
+ 
+ std::atomic<bool> mouse_look_active{true};
+ 
++// Opt-in, process-local observations only. Never latch, synthesize or consume
++// input. The sole MnK device shares these counters across its caller threads.
++struct MnkDiagnostics {
++  std::atomic<uint64_t> state_polls{0};
++  std::atomic<uint64_t> keystroke_polls{0};
++  std::mutex mutex;
++  uint32_t key_records = 0;
++  uint32_t state_records = 0;
++  uint64_t previous_event_poll = 0;
++  uint16_t previous_buttons = 0;
++  uint32_t previous_gates = 0;
++  bool have_state = false;
++};
++MnkDiagnostics input_diagnostics;
++
++int64_t DiagnosticTimeUs() {
++  return std::chrono::duration_cast<std::chrono::microseconds>(
++             std::chrono::steady_clock::now().time_since_epoch())
++      .count();
++}
++
++bool IsDiagnosticKey(rex::ui::VirtualKey key) {
++  return key == rex::ui::VirtualKey::kX || key == rex::ui::VirtualKey::kReturn ||
++         key == rex::ui::VirtualKey::kSpace;
++}
++
++void TraceMnkKey(const rex::ui::KeyEvent& e, bool down, bool enabled, bool focused,
++                 bool active, bool applied) {
++  if (!IsDiagnosticKey(e.virtual_key()))
++    return;
++  auto& diag = input_diagnostics;
++  std::lock_guard lock(diag.mutex);
++  if (diag.key_records >= 32)
++    return;
++  const auto polls = diag.state_polls.load(std::memory_order_relaxed);
++  const uint8_t modifiers = (e.is_shift_pressed() ? kModShift : 0) |
++                            (e.is_ctrl_pressed() ? kModCtrl : 0) |
++                            (e.is_alt_pressed() ? kModAlt : 0);
++  REXLOG_INFO("[input_diag] key #{}/32 mono_us={} vk={} down={} applied={} "
++              "enabled={} focus={} active={} mods={} prev_state={} "
++              "state_polls_entered={} polls_since_event={}",
++              ++diag.key_records, DiagnosticTimeUs(), static_cast<uint16_t>(e.virtual_key()),
++              down, applied, enabled, focused, active, modifiers, e.prev_state(),
++              polls, polls - diag.previous_event_poll);
++  diag.previous_event_poll = polls;
++}
++
++void TraceMnkState(uint64_t poll, bool enabled, bool valid_device, bool focused,
++                   int active, uint16_t buttons) {
++  auto& diag = input_diagnostics;
++  std::lock_guard lock(diag.mutex);
++  // Only the two diagnostic gamepad buttons are recorded, never other keys.
++  buttons &= X_INPUT_GAMEPAD_START | X_INPUT_GAMEPAD_A;
++  const uint32_t gates = uint32_t(enabled) | (uint32_t(valid_device) << 1) |
++                         (uint32_t(focused) << 2) | (uint32_t(active + 1) << 3);
++  const bool changed = !diag.have_state || buttons != diag.previous_buttons ||
++                       gates != diag.previous_gates;
++  diag.have_state = true;
++  diag.previous_buttons = buttons;
++  diag.previous_gates = gates;
++  if (diag.state_records >= 64 || (poll > 8 && !changed))
++    return;
++  REXLOG_INFO("[input_diag] state #{}/64 mono_us={} poll={} enabled={} "
++              "valid_device={} focus={} active={} start_a=0x{:04X}",
++              ++diag.state_records, DiagnosticTimeUs(), poll, enabled,
++              valid_device, focused, active, buttons);
++}
++
++void TraceMnkKeystrokePoll(uint64_t poll, bool enabled, bool valid_device) {
++  auto& diag = input_diagnostics;
++  std::lock_guard lock(diag.mutex);
++  // Shares the state-record budget; observes API use, never queue contents.
++  if (poll > 8 || diag.state_records >= 64)
++    return;
++  REXLOG_INFO("[input_diag] keystroke #{}/64 mono_us={} poll={} enabled={} valid_device={}",
++              ++diag.state_records, DiagnosticTimeUs(), poll, enabled, valid_device);
++}
++
+ }  // namespace
+ 
+ void SetMouseLookActive(bool active) {
+@@ -255,7 +336,13 @@ X_RESULT MnkInputDriver::GetDeviceCapabilities(DeviceId id, uint32_t flags,
+ }
+ 
+ X_RESULT MnkInputDriver::GetDeviceState(DeviceId id, X_INPUT_STATE* out_state) {
+-  if (!IsEnabled() || id != kMnkDevice) {
++  const bool diagnostic = REXCVAR_GET(input_diag);
++  const uint64_t diagnostic_poll = diagnostic
++      ? input_diagnostics.state_polls.fetch_add(1, std::memory_order_relaxed) + 1 : 0;
++  const bool enabled = IsEnabled();
++  if (!enabled || id != kMnkDevice) {
++    if (diagnostic)
++      TraceMnkState(diagnostic_poll, enabled, id == kMnkDevice, has_focus_, -1, 0);
+     return X_ERROR_DEVICE_NOT_CONNECTED;
+   }
+ 
+@@ -264,11 +351,15 @@ X_RESULT MnkInputDriver::GetDeviceState(DeviceId id, X_INPUT_STATE* out_state) {
+   QueueMouseCaptureUpdate(IsEnabled() && REXCVAR_GET(mnk_mouse) && IsMouseLookActive() &&
+                           has_focus_ && is_active());
+ 
+-  if (!is_active() || !has_focus_) {
++  const bool active = is_active();
++  const bool focused = has_focus_;
++  if (!active || !focused) {
+     if (out_state) {
+       std::memset(out_state, 0, sizeof(*out_state));
+       out_state->packet_number = packet_number_;
+     }
++    if (diagnostic)
++      TraceMnkState(diagnostic_poll, enabled, true, focused, active, 0);
+     return X_ERROR_SUCCESS;
+   }
+ 
+@@ -359,6 +450,8 @@ X_RESULT MnkInputDriver::GetDeviceState(DeviceId id, X_INPUT_STATE* out_state) {
+     out_state->gamepad.thumb_rx = clamp16(rx);
+     out_state->gamepad.thumb_ry = clamp16(ry);
+   }
++  if (diagnostic)
++    TraceMnkState(diagnostic_poll, enabled, true, focused, active, buttons);
+   return X_ERROR_SUCCESS;
+ }
+ 
+@@ -371,7 +464,12 @@ X_RESULT MnkInputDriver::SetDeviceVibration(DeviceId id, X_INPUT_VIBRATION* vibr
+ 
+ X_RESULT MnkInputDriver::GetDeviceKeystroke(DeviceId id, uint32_t flags,
+                                             X_INPUT_KEYSTROKE* out_keystroke) {
+-  if (!IsEnabled() || id != kMnkDevice) {
++  const bool enabled = IsEnabled();
++  if (REXCVAR_GET(input_diag)) {
++    const auto poll = input_diagnostics.keystroke_polls.fetch_add(1, std::memory_order_relaxed) + 1;
++    TraceMnkKeystrokePoll(poll, enabled, id == kMnkDevice);
++  }
++  if (!enabled || id != kMnkDevice) {
+     return X_ERROR_DEVICE_NOT_CONNECTED;
+   }
+   std::lock_guard lock(state_mutex_);
+@@ -481,19 +579,36 @@ void MnkInputDriver::SetKeyState(uint16_t vk, bool down) {
+ }
+ 
+ void MnkInputDriver::OnKeyDown(rex::ui::KeyEvent& e) {
+-  if (!IsEnabled() || !has_focus_)
++  const bool enabled = IsEnabled();
++  const bool focused = has_focus_;
++  if (!enabled || !focused) {
++    if (REXCVAR_GET(input_diag) && IsDiagnosticKey(e.virtual_key()))
++      TraceMnkKey(e, true, enabled, focused, is_active(), false);
+     return;
+-  std::lock_guard lock(state_mutex_);
+-  uint16_t vk = static_cast<uint16_t>(e.virtual_key());
+-  SetKeyState(vk, true);
++  }
++  {
++    std::lock_guard lock(state_mutex_);
++    uint16_t vk = static_cast<uint16_t>(e.virtual_key());
++    SetKeyState(vk, true);
++  }
++  if (REXCVAR_GET(input_diag) && IsDiagnosticKey(e.virtual_key()))
++    TraceMnkKey(e, true, enabled, focused, is_active(), true);
+ }
+ 
+ void MnkInputDriver::OnKeyUp(rex::ui::KeyEvent& e) {
+-  if (!IsEnabled())
++  const bool enabled = IsEnabled();
++  if (!enabled) {
++    if (REXCVAR_GET(input_diag) && IsDiagnosticKey(e.virtual_key()))
++      TraceMnkKey(e, false, enabled, has_focus_, is_active(), false);
+     return;
+-  std::lock_guard lock(state_mutex_);
+-  uint16_t vk = static_cast<uint16_t>(e.virtual_key());
+-  SetKeyState(vk, false);
++  }
++  {
++    std::lock_guard lock(state_mutex_);
++    uint16_t vk = static_cast<uint16_t>(e.virtual_key());
++    SetKeyState(vk, false);
++  }
++  if (REXCVAR_GET(input_diag) && IsDiagnosticKey(e.virtual_key()))
++    TraceMnkKey(e, false, enabled, has_focus_, is_active(), true);
+ }
+ 
+ void MnkInputDriver::OnMouseDown(rex::ui::MouseEvent& e) {

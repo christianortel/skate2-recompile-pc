@@ -1,0 +1,305 @@
+# Reviewed original callable entries for the audited Skate 2 executable.
+# Required evidence per entry: original complete body, no instruction-block or protected extent owner,
+# no detected jump-table membership, and original code storing its table in an object.
+# Some entries overlap only speculative gap_fill sizes; actual discovered blocks do not cover them.
+# Full evidence: reports/indirect-lower-candidates-correlated.json
+
+# 823134A0: table 820068A8, slot 820069F0; object store 82BE67B8 in 82BE6788.
+[functions."0x823134A0"]
+size = 0x8
+
+# 82313958: table 822CD510, slot 822CD53C; object store 82BFD2A4 in 82BFD280.
+[functions."0x82313958"]
+size = 0x8
+
+# 82346878: table 820029B0, slot 82002A04; object store 82B4B208 in 82B4B1E8.
+[functions."0x82346878"]
+size = 0x14
+
+# 82347DB8: table 82001850, slot 82001F48; object store 823B9618 in 823B94A8.
+[functions."0x82347DB8"]
+size = 0x10
+
+# 82349B48: table 8200110C, slot 8200166C; object store 8246BBCC in 8246BBA0.
+[functions."0x82349B48"]
+size = 0x8
+
+# 8239F6D0: table 820054F0, slot 82005564; object store 82B190D4 in 82B18F78.
+[functions."0x8239F6D0"]
+size = 0x38
+
+# 823A0750: table 82005EF0, slot 82005FD4; object store 82A93888 in 82A937F0.
+[functions."0x823A0750"]
+size = 0xC
+
+# 82461620: table 822A4940, slot 822A4990; object store 82439810 in 824397C0.
+[functions."0x82461620"]
+size = 0xC
+
+# 82474850: table 82001850, slot 8200196C; object store 823B9618 in 823B94A8.
+[functions."0x82474850"]
+size = 0x14
+
+# 82482F80: table 822A5090, slot 822A51EC; object store 8246DC6C in 8246DC48.
+[functions."0x82482F80"]
+size = 0xC
+
+# 82485580: table 822A5090, slot 822A5184; object store 8246DC6C in 8246DC48.
+[functions."0x82485580"]
+size = 0x8
+
+# 82485618: table 822A5318, slot 822A5374; object store 8246DEDC in 8246DEB8.
+[functions."0x82485618"]
+size = 0xC
+
+# 824D8938: table 822A632C, slot 822A6354; object store 824D7600 in 824D75D8.
+[functions."0x824D8938"]
+size = 0x18
+
+# 824D8950: table 822A632C, slot 822A6358; object store 824D7600 in 824D75D8.
+[functions."0x824D8950"]
+size = 0x18
+
+# 824EA808: table 8200110C, slot 820012C8; object store 8246BBCC in 8246BBA0.
+[functions."0x824EA808"]
+size = 0x8
+
+# 824EA810: table 820027C0, slot 820027C0; object store 824DEC70 in 824DEB00.
+[functions."0x824EA810"]
+size = 0x8
+
+# 824EA858: table 8200110C, slot 820012CC; object store 8246BBCC in 8246BBA0.
+[functions."0x824EA858"]
+size = 0x8
+
+# 82528210: table 822A90E8, slot 822A9148; object store 8251FF54 in 8251FAD0.
+[functions."0x82528210"]
+size = 0x10
+
+# 82538BA8: table 822A9688, slot 822A969C; object store 82521F24 in 8251FAD0.
+[functions."0x82538BA8"]
+size = 0x1C
+
+# 8253C988: table 822A9A98, slot 822A9AAC; object store 82521054 in 8251FAD0.
+[functions."0x8253C988"]
+size = 0x14
+
+# 82540270: table 822A9E68, slot 822A9ECC; object store 82521EB0 in 8251FAD0.
+[functions."0x82540270"]
+size = 0x4
+
+# 8256B190: table 822AB748, slot 822AB75C; object store 82521B28 in 8251FAD0.
+[functions."0x8256B190"]
+size = 0x20
+
+# 82593020: table 82002A30, slot 82002A54; object store 82592D14 in 82592CF0.
+[functions."0x82593020"]
+size = 0x20
+
+# 82593040: table 82002A30, slot 82002A58; object store 82592D14 in 82592CF0.
+[functions."0x82593040"]
+size = 0x24
+
+# 825B0A20: table 822B285C, slot 822B2860; object store 825B18F8 in 825B18C8.
+[functions."0x825B0A20"]
+size = 0x18
+
+# 825B0A38: table 822B285C, slot 822B2868; object store 825B18F8 in 825B18C8.
+[functions."0x825B0A38"]
+size = 0x18
+
+# 825C0740: table 822AEE64, slot 822AF09C; object store 825BFF14 in 825BFEE0.
+[functions."0x825C0740"]
+size = 0x18
+
+# 8262D750: table 822B4F38, slot 822B4F78; object store 8262A2DC in 8262A1C8.
+[functions."0x8262D750"]
+size = 0x18
+
+# 8262D768: table 822B4F38, slot 822B4F7C; object store 8262A2DC in 8262A1C8.
+[functions."0x8262D768"]
+size = 0x18
+
+# 8262DDA8: table 822B4F38, slot 822B4FA4; object store 8262A2DC in 8262A1C8.
+[functions."0x8262DDA8"]
+size = 0x1C
+
+# 82630010: table 822B42C8, slot 822B42E4; object store 8262F68C in 8262F5F8.
+[functions."0x82630010"]
+size = 0x8
+
+# 8263F5C0: table 820039A8, slot 82003C24; object store 8244DEFC in 8244DED8.
+[functions."0x8263F5C0"]
+size = 0x18
+
+# 826420B0: table 822B5634, slot 822B56C8; object store 824E2BC0 in 824E2AE0.
+[functions."0x826420B0"]
+size = 0x8
+
+# 826420B8: table 822B5634, slot 822B56C4; object store 824E2BC0 in 824E2AE0.
+[functions."0x826420B8"]
+size = 0x8
+
+# 8264A2F0: table 8200252C, slot 82002648; object store 824E2808 in 824E2778.
+[functions."0x8264A2F0"]
+size = 0x1C
+
+# 8268CBD0: table 822B63D8, slot 822B6458; object store 825ECDF8 in 825ECD68.
+[functions."0x8268CBD0"]
+size = 0x1C
+
+# 826C5B78: table 822A437C, slot 822A4490; object store 82410BD4 in 82410B58.
+[functions."0x826C5B78"]
+size = 0xC
+
+# 827B24D8: table 822BAF20, slot 822BAFC4; object store 827AF120 in 827AF0F8.
+[functions."0x827B24D8"]
+size = 0x4
+
+# 827E01B8: table 822BB2CC, slot 822BB334; object store 827DF198 in 827DF178.
+[functions."0x827E01B8"]
+size = 0x14
+
+# 8288FCF0: table 822BCF90, slot 822BD06C; object store 8288E0F0 in 8288E078.
+[functions."0x8288FCF0"]
+size = 0x8
+
+# 8288FD00: table 822BCF90, slot 822BD078; object store 8288E0F0 in 8288E078.
+[functions."0x8288FD00"]
+size = 0x8
+
+# 8288FD08: table 822BD170, slot 822BD188; object store 8288F818 in 8288F7D0.
+[functions."0x8288FD08"]
+size = 0x8
+
+# 8288FD10: table 822BCF90, slot 822BD07C; object store 8288E0F0 in 8288E078.
+[functions."0x8288FD10"]
+size = 0x8
+
+# 8288FD18: table 822BD170, slot 822BD184; object store 8288F818 in 8288F7D0.
+[functions."0x8288FD18"]
+size = 0x8
+
+# 828C5620: table 822BEE74, slot 822BEEBC; object store 828A77CC in 828A77A8.
+[functions."0x828C5620"]
+size = 0x8
+
+# 828D8E98: table 822BF9C0, slot 822BFA58; object store 828C5FEC in 828C5F08.
+[functions."0x828D8E98"]
+size = 0x8
+
+# 828D8EB0: table 822BF9C0, slot 822BFA90; object store 828C5FEC in 828C5F08.
+[functions."0x828D8EB0"]
+size = 0x8
+
+# 828D8F18: table 822BF9C0, slot 822BFA54; object store 828C5FEC in 828C5F08.
+[functions."0x828D8F18"]
+size = 0x8
+
+# 828D8F70: table 822BF9C0, slot 822BFA50; object store 828C5FEC in 828C5F08.
+[functions."0x828D8F70"]
+size = 0x8
+
+# 828DEEE8: table 822BFC38, slot 822C02D4; object store 828DCD14 in 828DCCF0.
+[functions."0x828DEEE8"]
+size = 0x1C
+
+# 828DF1B0: table 822BFB68, slot 822BFC28; object store 828D98C4 in 828D9868.
+[functions."0x828DF1B0"]
+size = 0x8
+
+# 828DF1E8: table 822BFC38, slot 822BFFA0; object store 828DCD14 in 828DCCF0.
+[functions."0x828DF1E8"]
+size = 0x8
+
+# 828DF548: table 822A5CA0, slot 822A5CF8; object store 824A9FF8 in 824A9A38.
+[functions."0x828DF548"]
+size = 0x8
+
+# 828EBF40: table 822C070C, slot 822C0844; object store 828B2380 in 828B2200.
+[functions."0x828EBF40"]
+size = 0x8
+
+# 828F3790: table 822C0878, slot 822C08B8; object store 828F37D4 in 828F37B0.
+[functions."0x828F3790"]
+size = 0x18
+
+# 828F37A8: table 822C0878, slot 822C08A8; object store 828F37D4 in 828F37B0.
+[functions."0x828F37A8"]
+size = 0x8
+
+# 828F7088: table 822C1030, slot 822C1058; object store 829183C0 in 82918388.
+[functions."0x828F7088"]
+size = 0x18
+
+# 828F70A0: table 822C1030, slot 822C1060; object store 829183C0 in 82918388.
+[functions."0x828F70A0"]
+size = 0x14
+
+# 828F73A0: table 822C113C, slot 822C11AC; object store 828B87EC in 828B87A0.
+[functions."0x828F73A0"]
+size = 0x18
+
+# 828F73B8: table 822C113C, slot 822C11B8; object store 828B87EC in 828B87A0.
+[functions."0x828F73B8"]
+size = 0x18
+
+# 828F73D0: table 822C113C, slot 822C11B4; object store 828B87EC in 828B87A0.
+[functions."0x828F73D0"]
+size = 0x18
+
+# 829098F8: table 822C113C, slot 822C1274; object store 828B87EC in 828B87A0.
+[functions."0x829098F8"]
+size = 0x10
+
+# 8290DFB8: table 822C12AC, slot 822C12E0; object store 828A888C in 828A8808.
+[functions."0x8290DFB8"]
+size = 0x18
+
+# 8290DFD0: table 822C12AC, slot 822C12E4; object store 828A888C in 828A8808.
+[functions."0x8290DFD0"]
+size = 0x18
+
+# 8291EDC8: table 822C0F40, slot 822C0FBC; object store 8290075C in 82900710.
+[functions."0x8291EDC8"]
+size = 0x8
+
+# 8291EDD0: table 822C0F40, slot 822C0FCC; object store 8290075C in 82900710.
+[functions."0x8291EDD0"]
+size = 0x8
+
+# 8291EDD8: table 822C0D28, slot 822C0D48; object store 828B7350 in 828B7328.
+[functions."0x8291EDD8"]
+size = 0x8
+
+# 8291EDF0: table 822C0F40, slot 822C0FC8; object store 8290075C in 82900710.
+[functions."0x8291EDF0"]
+size = 0x8
+
+# 8291EE18: table 822C0F40, slot 822C0FD4; object store 8290075C in 82900710.
+[functions."0x8291EE18"]
+size = 0x8
+
+# 8291EE28: table 822C0F40, slot 822C1014; object store 8290075C in 82900710.
+[functions."0x8291EE28"]
+size = 0x8
+
+# 8291EE40: table 822C1030, slot 822C1090; object store 829183C0 in 82918388.
+[functions."0x8291EE40"]
+size = 0x8
+
+# 8291EE58: table 822C0F40, slot 822C1018; object store 8290075C in 82900710.
+[functions."0x8291EE58"]
+size = 0x8
+
+# 8291EE68: table 822C113C, slot 822C1254; object store 828B87EC in 828B87A0.
+[functions."0x8291EE68"]
+size = 0x8
+
+# 8291EEA0: table 822C113C, slot 822C1258; object store 828B87EC in 828B87A0.
+[functions."0x8291EEA0"]
+size = 0x8
+
+# 82A0D5E8: table 822C3134, slot 822C314C; object store 82A3B20C in 82A3B1E8.
+[functions."0x82A0D5E8"]
+size = 0x14

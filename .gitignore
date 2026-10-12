@@ -1,0 +1,34 @@
+# Local game inputs and reference snapshot
+/skate 2 xbox 360 rom files/
+/Former (not mine) recomp project for skate 3 on github/
+# Downloaded tools and SDK build outputs
+/tools/*
+!/tools/Enter-BuildEnvironment.ps1
+/.local/
+/game/
+/game-import-*/
+/releases/
+/reports/
+# Derived game code and local runtime data
+/skate2/generated/
+/skate2/out/
+/skate2/build/
+/skate2/logs/
+/skate2/cache/
+/skate2/userdata/
+/skate2/skate2.toml
+/packages/
+/source-exports/
+/validation-builds/
+/publish/
+/reports/*.bin
+*.xex
+*.iso
+*.rar
+*.zip
+*.exe
+*.dll
+*.pdb
+*.dmp
+*.obj
+__pycache__/

@@ -1,0 +1,63 @@
+diff --git a/src/core/perf/counter.cpp b/src/core/perf/counter.cpp
+index 536009e..baa9330 100644
+--- a/src/core/perf/counter.cpp
++++ b/src/core/perf/counter.cpp
+@@ -13,12 +13,18 @@
+ #include <rex/cvar.h>
+ #include <rex/filesystem.h>
+ #include <rex/logging.h>
++#include <rex/platform.h>
+ 
+ #include <array>
+ #include <atomic>
++#include <chrono>
+ #include <cstdio>
+ #include <cstring>
+ 
++#if REX_PLATFORM_WIN32
++#include <share.h>
++#endif
++
+ REXCVAR_DEFINE_STRING(perf_log_csv, "", "Perf",
+                       "Path to write per-frame CSV log (empty = disabled)");
+ 
+@@ -137,7 +143,13 @@ void SetCsvLogPath(const std::string& path) {
+   if (path.empty())
+     return;
+ 
++#if REX_PLATFORM_WIN32
++  // Permit a live diagnostic reader, but keep other writers excluded. The
++  // generic secure-CRT OpenFile wrapper does not allow sharing on Windows.
++  g_csv_file = _wfsopen(rex::to_path(path).c_str(), L"w", _SH_DENYWR);
++#else
+   g_csv_file = rex::filesystem::OpenFile(rex::to_path(path), "w");
++#endif
+   if (!g_csv_file) {
+     REXLOG_WARN("perf: failed to open CSV log: {}", path);
+     g_csv_path.clear();
+@@ -145,18 +157,25 @@ void SetCsvLogPath(const std::string& path) {
+   }
+ 
+   // Write header
++  std::fputs("timestamp_utc_us,", g_csv_file);
+   for (size_t i = 0; i < kNumCounters; ++i) {
+     if (i > 0)
+       std::fputc(',', g_csv_file);
+     std::fputs(kCounterNames[i], g_csv_file);
+   }
+   std::fputc('\n', g_csv_file);
++  std::fflush(g_csv_file);
+ }
+ 
+ void WriteCsvFrame() {
+   if (!g_csv_file)
+     return;
+ 
++  // Wall-clock anchor for aligning gameplay observations and separate load
++  // samples. frame_time_us remains the monotonic guest-swap interval.
++  const auto timestamp_us = std::chrono::duration_cast<std::chrono::microseconds>(
++      std::chrono::system_clock::now().time_since_epoch()).count();
++  std::fprintf(g_csv_file, "%lld,", static_cast<long long>(timestamp_us));
+   for (size_t i = 0; i < kNumCounters; ++i) {
+     if (i > 0)
+       std::fputc(',', g_csv_file);

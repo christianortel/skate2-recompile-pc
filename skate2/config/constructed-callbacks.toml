@@ -1,0 +1,72 @@
+# Original code-constructed loading callbacks.
+# Exact bodies and alternate-entry wrappers independently reviewed.
+# Callable provenance: reports/constructed-callback-registry-proof.json
+# Body evidence: reports/constructed-callback-independent-bodies.json
+# Keep each existing target-minus-eight argument adapter registered.
+
+[functions."0x827E4AA0"]
+size = 0x108
+
+[functions."0x827E4DE8"]
+size = 0x58
+
+[functions."0x827E4FF0"]
+size = 0x1EC
+
+[functions."0x827E52B8"]
+size = 0xD4
+
+[functions."0x827E5F90"]
+size = 0x13C
+
+[functions."0x827E6170"]
+size = 0x94
+
+[functions."0x827E6308"]
+size = 0xF0
+
+[functions."0x827E6BE0"]
+size = 0xAC
+
+[functions."0x827E6E00"]
+size = 0x1E0
+
+[functions."0x827E7410"]
+size = 0xE8
+
+[functions."0x827E7708"]
+size = 0x2E4
+
+[functions."0x827E7B68"]
+size = 0xE4
+
+[functions."0x827E7E48"]
+size = 0x5C
+
+[functions."0x827E7FC0"]
+size = 0x108
+
+[functions."0x827E81B0"]
+size = 0xD8
+
+[functions."0x827E82E0"]
+size = 0x4C
+
+[functions."0x827E8548"]
+size = 0x9C
+
+[functions."0x827E8678"]
+size = 0x9C
+
+[functions."0x827E8A98"]
+size = 0x8C
+
+[functions."0x827E8C18"]
+size = 0x74
+
+# Original three-instruction callback stored at 0x82E12E38 + 60 by
+# 0x824EB270, loaded from that same field and called by 0x82810F48.
+# Tail target 0x8282CAE8 is already registered. Independent original-byte
+# producer, consumer and boundary proof: constructed-callback-8286C048 reports.
+[functions."0x8286C048"]
+size = 0xC
