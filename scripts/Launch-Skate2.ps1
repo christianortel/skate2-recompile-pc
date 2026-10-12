@@ -27,7 +27,7 @@ try {
     )
     $executable = $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
     if (-not $executable) {
-        throw 'The Skate 2 PC executable has not been built yet. Build the project before launching; game files alone are not a playable PC port.'
+        throw 'skate2.exe is missing. If you downloaded the source, follow docs/BUILD.md. If you have a player package, extract all of its files before launching.'
     }
 
     $appRoot = $launchRoot
@@ -46,12 +46,12 @@ try {
         (Test-Path -LiteralPath (Join-Path $_ 'data') -PathType Container)
     } | Select-Object -First 1
     if (-not $gameRoot) {
-        throw 'Game data is missing. Put your extracted default.xex and data folder inside game next to this launcher, or restore the original workspace game directory.'
+        throw 'Game data is missing. Run Import Game Files.cmd and select your extracted folder containing default.xex and data. See docs/INSTALL.md.'
     }
 
     $expectedHash = '116BA3EE37FCF0D8DB60B7D47C971FDB6D3EB2A7A4D3CFC3611A06704A588AE5'
     if ((Get-FileHash -LiteralPath (Join-Path $gameRoot 'default.xex') -Algorithm SHA256).Hash -ne $expectedHash) {
-        throw 'This game executable differs from the revision used to build this port. Revalidate and rebuild it before launching.'
+        throw 'Unsupported game executable. See docs/INSTALL.md for the required revision and SHA-256.'
     }
     $userRoot = Join-Path $appRoot 'userdata'
     $cacheRoot = Join-Path $appRoot 'cache'
@@ -90,7 +90,7 @@ try {
         [pscustomobject]@{ Executable = $executable; GameData = $gameRoot; UserData = $userRoot; Cache = $cacheRoot; Arguments = $arguments }
         exit 0
     }
-    Write-Host 'Starting the Skate 2 development build. Gameplay validation is still in progress.'
+    Write-Host 'Starting Skate 2...'
     # Windows GUI programs must be waited on explicitly so their exit status is
     # reported correctly by both Windows PowerShell and PowerShell 7. These
     # arguments contain fixed switches and Windows paths (no embedded quotes).

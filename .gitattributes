@@ -1,0 +1,3 @@
+# Preserve exact upstream notice bytes and the matching inventory hashes on
+# Windows checkouts, including when core.autocrlf is enabled by the user.
+licenses/* -text

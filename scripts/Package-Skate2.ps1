@@ -173,10 +173,12 @@ $supportFiles = @(
     [pscustomobject]@{ source = Join-Path $workspace 'Launch Skate 2 - 4x Quality.cmd'; relative = 'Launch Skate 2 - 4x Quality.cmd' },
     [pscustomobject]@{ source = Join-Path $PSScriptRoot 'Launch-Skate2.ps1'; relative = 'scripts\Launch-Skate2.ps1' },
     [pscustomobject]@{ source = Join-Path $PSScriptRoot 'Import-Skate2Data.ps1'; relative = 'scripts\Import-Skate2Data.ps1' },
+    [pscustomobject]@{ source = Join-Path $workspace 'README.md'; relative = 'README.md' },
     [pscustomobject]@{ source = Join-Path $workspace 'docs\INSTALL.md'; relative = 'docs\INSTALL.md' },
     [pscustomobject]@{ source = Join-Path $workspace 'docs\KNOWN_ISSUES.md'; relative = 'docs\KNOWN_ISSUES.md' },
     [pscustomobject]@{ source = Join-Path $workspace 'docs\DISPLAY.md'; relative = 'docs\DISPLAY.md' },
     [pscustomobject]@{ source = Join-Path $workspace 'docs\BUILD.md'; relative = 'docs\BUILD.md' },
+    [pscustomobject]@{ source = Join-Path $workspace 'docs\HOW_IT_WORKS.md'; relative = 'docs\HOW_IT_WORKS.md' },
     [pscustomobject]@{ source = Join-Path $workspace 'docs\RELEASE_CHECKLIST.md'; relative = 'docs\RELEASE_CHECKLIST.md' },
     [pscustomobject]@{ source = Join-Path $workspace 'THIRD_PARTY_NOTICES.md'; relative = 'THIRD_PARTY_NOTICES.md' },
     [pscustomobject]@{ source = Join-Path $workspace 'LICENSE'; relative = 'LICENSE' }
@@ -254,26 +256,26 @@ try {
         New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force | Out-Null
         Copy-Item -LiteralPath $file.FullName -Destination $target
     }
-    $gameNote = if (-not $includeGame) { 'Game data is not included. Use Import Game Files.cmd with your own supported extracted game before launching.' } else { 'The game directory contains a local copy of the original user-provided game files. This folder is for local use only.' }
+    $gameNote = if (-not $includeGame) { 'Game files are not included. Run Import Game Files.cmd and select your own extracted folder containing default.xex and data.' } else { 'Game files are already included in this local test folder. Do not distribute it.' }
     @"
-Skate 2 local development build
+Skate 2 PC - local preview
 
-Status: development / unverified. This package is not evidence of playability.
-Start with Launch Skate 2.cmd. Controller behavior, audio, graphics, career
-progression, saves, stability, and operation without developer tools require
-actual gameplay verification. Windows 10/11 x64 and a compatible Direct3D 12
-GPU are expected; system and graphics-driver requirements remain unverified.
+This package is for local testing. It is not a public release.
 
-$gameNote
+1. Keep all package files together in a writable folder.
+2. $gameNote
+3. Connect your controller, then run Launch Skate 2.cmd.
 
-Saves and caches are created locally in userdata and cache. Original source
-files and existing saves were not moved. Build tools, generated C++ source,
-debug PDBs, and previous user data are not included.
+The default profile uses 2x rendering and unlimited FPS. For lower GPU load,
+use Launch Skate 2 - 1x Performance.cmd. USB DualSense can connect directly;
+close DS4Windows when using direct input. Press F4 for PC settings.
 
-This staging folder remains local. No files have been uploaded or published.
-The file inventory and SHA-256 hashes are recorded in package-manifest.json;
-the manifest itself is excluded from its own hash list.
-"@ | Set-Content -LiteralPath (Join-Path $Destination 'DEVELOPMENT-STATUS.txt') -Encoding utf8
+Read docs/INSTALL.md for requirements, the supported game revision, controls,
+audio, saves, and troubleshooting. See docs/KNOWN_ISSUES.md for limitations.
+Keep the userdata folder when updating; it contains your saves.
+
+Package contents and hashes are listed in package-manifest.json.
+"@ | Set-Content -LiteralPath (Join-Path $Destination 'START-HERE.txt') -Encoding utf8
 
     $inventory = @(Get-ChildItem -LiteralPath $Destination -Recurse -File | Sort-Object FullName | ForEach-Object {
         [pscustomobject]@{

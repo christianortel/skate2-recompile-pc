@@ -1,20 +1,33 @@
-# How this port works
+# How the port works
 
-ReXGlue translates the supported game's PowerPC executable into C++ during development. A native Windows compiler builds that generated code with this project's entry point and hooks. The ReXGlue runtime provides Xbox 360 operating-system services and translates the game's graphics workload to Direct3D 12. This is a native CPU recompilation with a compatibility runtime; it is not a rewrite of Skate 2's engine.
+## Recompilation
 
-The older community recompilation snapshot was used as an analysis reference. Its addresses differed from this executable revision, and its runtime stubs were not carried into this project. The project manifest and configuration add verified function bounds and indirect-call targets, including a callback needed to enter Free Skate.
+[ReXGlue](https://github.com/rexglue/rexglue-sdk) translates the supported Xbox 360 PowerPC executable into C++. A Windows compiler builds that code with the port's application entry point and game-specific hooks. The runtime supplies Xbox 360 operating-system services, audio, input, and Direct3D 12 graphics translation.
 
-Local SDK patches address Windows builds, FLOAT16 conversion, concurrent input access, audio-device selection, configuration saving, timing diagnostics, and frame-rate validation. A vertex-buffer coherency fix has a focused regression test, but did not itself remove the user's colored/black graphics corruption.
+Original game data is loaded locally at runtime. Generated game code stays local and is excluded from the public source repository.
 
-The decisive graphics comparison kept the same area and settings while changing presentation pacing: paced modes removed corruption but felt slower. The latest build then waited for actual native GPU completion at eligible idle-clean requests in the original game's command stream. Unlimited mode with this change was reported smooth and clean. This supports a synchronization problem; the exact corrupted resource has not been traced and broader compatibility remains unproven.
+## Game-specific work
 
-The frame-rate hook changes the game's presentation interval selection without replacing its simulation clock. Unlimited retains 60 Hz guest vblank; numeric modes use paced presentation with the chosen guest refresh. These choices still require physics, camera, replay, and audio validation across content.
+The project manifest supplies function boundaries, indirect-call targets, and switch tables for the supported executable revision. These resolve code-discovery gaps, including callbacks used while entering Free Skate. An earlier community recompilation was an analysis reference; its runtime stubs were not carried into this project.
+
+The SDK patches cover Windows builds, FLOAT16 conversion, concurrent input access, controller diagnostics, audio output selection, configuration persistence, vertex-buffer coherency, and frame timing.
+
+## Graphics and frame timing
+
+The default launch profile combines synchronous shader compilation with a graphics synchronization patch. At eligible idle-clean requests between closed frames, the runtime waits for native GPU completion before command processing continues. The patch covers this specific command pattern; it is not a complete implementation of every Xbox 360 GPU wait operation.
+
+The frame-rate hook changes the game's presentation-interval selection while retaining its clock implementation. Unlimited mode keeps a 60 Hz guest refresh. Numeric modes use paced presentation with the selected guest refresh. The supplied profiles require guest VSync to remain enabled and apply the synchronization settings together.
+
+## Reproducing a build
+
+The repository pins ReXGlue v0.10.0 and includes the build patches, game configuration, importer, and packaging scripts. Follow [BUILD.md](BUILD.md) to build from your own supported game files. The source exporter excludes game data, generated game code, build outputs, saves, and local settings.
 
 ## Credits
 
-- [ReXGlue SDK](https://github.com/rexglue/rexglue-sdk), pinned to v0.10.0, and its contributors.
-- [Xenia](https://github.com/xenia-project/xenia) and its contributors, whose runtime/graphics work underlies portions of ReXGlue.
-- [Xenia game patches](https://github.com/xenia-canary/game-patches), including the Skate 2 presentation-interval research credited to illusion.
-- [Skate-2-Team/sk82-recomp](https://github.com/Skate-2-Team/sk82-recomp), the earlier community recompilation reference, and the original game's creators. The reference used XenonRecomp; this project uses ReXGlue and revision-specific analysis.
+- [ReXGlue SDK](https://github.com/rexglue/rexglue-sdk) and its contributors.
+- [Xenia](https://github.com/xenia-project/xenia) and its contributors, whose runtime and graphics work underlies portions of ReXGlue.
+- [Xenia game patches](https://github.com/xenia-canary/game-patches), including Skate 2 presentation-interval research by illusion.
+- [Skate-2-Team/sk82-recomp](https://github.com/Skate-2-Team/sk82-recomp), the earlier community recompilation reference.
+- Skate 2's original developers and creators.
 
-Third-party notices remain with their respective code. Game files and generated game code are not included in the source repository.
+See [LICENSE](../LICENSE) for newly authored port code and [third-party notices](../THIRD_PARTY_NOTICES.md) for dependency attribution and terms.

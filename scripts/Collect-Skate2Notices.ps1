@@ -70,8 +70,8 @@ Add-Notice 'ImGui stb_truetype' 'thirdparty/imgui/imstb_truetype.h' 'ImGui-stb_t
 Add-Notice 'ImGui stb_textedit' 'thirdparty/imgui/imstb_textedit.h' 'ImGui-stb_textedit-LICENSE.txt' 'MIT or public-domain alternatives' 'ImGui text editing' $stbLicense
 Add-Notice 'stb_image' 'thirdparty/stb/stb_image.h' 'stb_image-LICENSE.txt' 'MIT or public-domain alternatives' 'Runtime image_decode.cpp' $stbLicense
 Add-Notice 'RenderDoc API' 'thirdparty/renderdoc/renderdoc_app.h' 'RenderDoc-API-LICENSE.txt' 'MIT' 'API header; RenderDoc DLL is not bundled' $firstComment
-Add-Notice 'DXC API headers' 'thirdparty/dxc/include/dxcapi.h' 'DXC-dxcapi-NOTICE.txt' 'Notice only; referenced full license missing locally' 'D3D12 runtime API declarations' $commentPrefix
-Add-Notice 'DXC converter header' 'thirdparty/dxc/include/DxbcConverter.h' 'DXC-DxbcConverter-NOTICE.txt' 'Notice only; referenced full license missing locally' 'D3D12 runtime API declarations' $commentPrefix
+Add-Notice 'DXC API headers' 'thirdparty/dxc/include/dxcapi.h' 'DXC-dxcapi-NOTICE.txt' 'Header notice; full pinned upstream terms in DXC-LICENSE.txt' 'D3D12 runtime API declarations' $commentPrefix
+Add-Notice 'DXC converter header' 'thirdparty/dxc/include/DxbcConverter.h' 'DXC-DxbcConverter-NOTICE.txt' 'Header notice; full pinned upstream terms in DXC-LICENSE.txt' 'D3D12 runtime API declarations' $commentPrefix
 Add-Notice 'libmspack' 'thirdparty/libmspack/libmspack/COPYING.LIB' 'libmspack-COPYING.LIB.txt' 'LGPL-2.1' 'lzxd.c static library linked into rexruntime'
 Add-Notice 'libmspack LZX' 'thirdparty/libmspack/libmspack/mspack/lzxd.c' 'libmspack-LZX-NOTICE.txt' 'LGPL-2.1 copyright notice' 'lzxd.c static library linked into rexruntime' $firstComment
 Add-Notice 'FFmpeg' 'thirdparty/FFmpeg/COPYING.LGPLv2.1' 'FFmpeg-COPYING.LGPLv2.1.txt' 'LGPL-2.1-or-later under inspected configuration' 'libavcodec and libavutil static libraries'
@@ -84,6 +84,45 @@ Add-Notice 'TinySHA1' 'thirdparty/crypto/TinySHA1.hpp' 'TinySHA1-LICENSE.txt' 'I
 Add-Notice 'Rijndael AES' 'thirdparty/crypto/rijndael-alg-fst.c' 'Rijndael-NOTICE.txt' 'Public-domain dedication and warranty disclaimer' 'Included directly by xex_module.cpp' $firstComment
 Add-Notice 'Crypto SHA256' 'thirdparty/crypto/sha256.cpp' 'SHA256-NOTICE.txt' 'Notice states zlib when acquired; full historical terms need verification' 'Included directly by xboxkrnl_crypt.cpp' $commentPrefix
 Add-Notice 'DXBC checksum' 'thirdparty/dxbc/DXBCChecksum.cpp' 'DXBC-Checksum-NOTICE.txt' 'AMD attribution and RSA-MD5 derivative notice' 'Compiled into GPU plugin' $commentPrefix
+
+# These complete upstream notices are absent from the vendored SDK directories.
+# Their exact bytes are checked into this source tree. Collection and CheckOnly
+# validate the pinned copies and corresponding SDK headers entirely offline.
+$pinnedNotices = @(
+    [pscustomobject]@{
+        Component='DXC API headers'; Output='DXC-LICENSE.txt'; Terms='University of Illinois/NCSA Open Source License'
+        Integration='Full top-level upstream license for the two vendored DXC API headers; retain their separate Microsoft notices'
+        Uri='https://raw.githubusercontent.com/microsoft/DirectXShaderCompiler/6b6f40200bea5ed99367513f53f6a28e52fd3d0e/LICENSE.TXT'
+        Revision='6b6f40200bea5ed99367513f53f6a28e52fd3d0e'
+        Bytes=3281; SHA256='721CB11DE618FCF9BBB7D25A389207BF2227357E6694BC326AB32A6699F9B951'
+        Provenance='Both vendored headers match byte-for-byte at the exact revision recorded by the SDK README.'
+        SourceFiles=[ordered]@{
+            'thirdparty/dxc/include/dxcapi.h'='7B4E2D7BBF0FC3DB84EAC717846F9BF6686B7E231CB4F7BCDE077390CCA7FD78'
+            'thirdparty/dxc/include/DxbcConverter.h'='40D1A4F604CFA0E12AB17D234980ECFCF79F6232B85D5B6643C0D1DEB5B2F4BE'
+        }
+    },
+    [pscustomobject]@{
+        Component='disruptorplus'; Output='disruptorplus-LICENSE.txt'; Terms='MIT; Copyright (c) 2013 Lewis Baker'
+        Integration='Header-only queue linked through rexcore into the runtime'
+        Uri='https://raw.githubusercontent.com/xenia-project/disruptorplus/5787e9cb7551c8c79cf9ce14f7be860dc907e9a4/LICENSE.txt'
+        Revision='5787e9cb7551c8c79cf9ce14f7be860dc907e9a4'
+        Bytes=1077; SHA256='A56F05C0DBD9489E928FD3CA22712F90B310FE749CEEF47059E895F6A235100C'
+        Provenance='Content match to the Xenia fork of lewissbaker/disruptorplus: ten headers are byte-identical; multi_threaded_claim_strategy.hpp differs only by the existing SDK cast from sequence_t to size_t in reducedCount = std::min(count, ...). The complete license also matches the original upstream. This identifies a reproducible source base, not a historical acquisition date.'
+        SourceFiles=[ordered]@{
+            'thirdparty/disruptorplus/include/disruptorplus/blocking_wait_strategy.hpp'='B371BC0BD95DCC4ACB8849DF43D4A516C219BFDCA6D86218360FCB98AE83AAA7'
+            'thirdparty/disruptorplus/include/disruptorplus/config.hpp'='558177EDC0F0F341AAF871464A9C4E1FDD3929F8612E51CEFE074CC8640F06A5'
+            'thirdparty/disruptorplus/include/disruptorplus/multi_threaded_claim_strategy.hpp'='37C30D89939D9B2871C3090C64832324E42A01335F625EDBE16D65A193BF2079'
+            'thirdparty/disruptorplus/include/disruptorplus/ring_buffer.hpp'='F80C4F206A45691131E77D36BFBDCDCCCBCD5F8194338CFFFA83A4F2BA3B0AAB'
+            'thirdparty/disruptorplus/include/disruptorplus/sequence_barrier_group.hpp'='424CA9697BF28B9EA5DEA9F349F53DE805FC9319AEA5E8889E38ED653087B7B3'
+            'thirdparty/disruptorplus/include/disruptorplus/sequence_barrier.hpp'='CB52DEBA21AFE52CD523140A7FAB2622847EF79098BC0909D9C6EF4E07AC9989'
+            'thirdparty/disruptorplus/include/disruptorplus/sequence_range.hpp'='1F8172B146B4AC84E1827FE59EF6AD0325735788C554FAB60BFE419225538D74'
+            'thirdparty/disruptorplus/include/disruptorplus/sequence.hpp'='A777CB4E8253F2C1437E1D3AD892948D2ED79A2B33A47482452BE0DAAD90C556'
+            'thirdparty/disruptorplus/include/disruptorplus/single_threaded_claim_strategy.hpp'='B9C255C06438966F9154C492BA5199A960616E6B34DFC6914F9EBFBC7BCD8162'
+            'thirdparty/disruptorplus/include/disruptorplus/spin_wait_strategy.hpp'='41D2AF942DAE50D7E21CD206D90DC2D210CE598B749A742A905B26961EA5D873'
+            'thirdparty/disruptorplus/include/disruptorplus/spin_wait.hpp'='4C20E01D88E9999B71F1BE5DEC75A77F766A4F5A7EF9949C7E1FA7DF80C94D42'
+        }
+    }
+)
 
 [void](Assert-OrdinaryPath $sdk $sdk)
 [void](Assert-OrdinaryPath $licenseRoot $workspace)
@@ -123,6 +162,34 @@ foreach ($spec in $specs) {
         Bytes=$selected.Length; SHA256=$hash
     }
     $prepared.Add([pscustomobject]@{ Record=$record; Bytes=$selected; Destination=$destination })
+}
+
+foreach ($spec in $pinnedNotices) {
+    if ($seen.ContainsKey($spec.Output)) { throw "Duplicate pinned notice output: $($spec.Output)" }
+    $seen[$spec.Output] = $true
+    $destination = Assert-OrdinaryPath (Join-Path $licenseRoot $spec.Output) $licenseRoot -File
+    [byte[]]$bytes = [IO.File]::ReadAllBytes($destination)
+    if ($bytes.Length -ne $spec.Bytes -or (Get-BytesHash $bytes) -ne $spec.SHA256) {
+        throw "Pinned upstream notice differs: $($spec.Output). Restore the reviewed checked-in bytes."
+    }
+    $sourceRecords = @(
+        foreach ($sourceFile in $spec.SourceFiles.GetEnumerator()) {
+            $source = Assert-OrdinaryPath (Join-Path $sdk $sourceFile.Key) $sdk -File
+            if ((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash -ne $sourceFile.Value) {
+                throw "SDK source differs from pinned notice provenance: $($sourceFile.Key)"
+            }
+            [pscustomobject]@{ Source=$sourceFile.Key; SHA256=$sourceFile.Value }
+        }
+    )
+    $record = [pscustomobject][ordered]@{
+        Component=$spec.Component; Path=('licenses/' + $spec.Output); Terms=$spec.Terms
+        Integration=$spec.Integration; Source=$spec.Uri; SourceRevision=$spec.Revision
+        SourceSHA256=$spec.SHA256; SourceByteOffset=0
+        Extraction='Entire immutable upstream notice file; checked-in bytes verified offline'
+        Bytes=$bytes.Length; SHA256=$spec.SHA256; Provenance=$spec.Provenance
+        VerifiedSdkSources=$sourceRecords
+    }
+    $prepared.Add([pscustomobject]@{ Record=$record; Bytes=$bytes; Destination=$destination })
 }
 
 # Record current build evidence separately from distributed notice text.
@@ -178,8 +245,6 @@ $binaryEvidence = @(
 )
 $remaining = @(
     [ordered]@{ Component='FFmpeg and libmspack'; Item='Static-link LGPL obligations'; Detail='Prepare exact corresponding library source, local modifications and build instructions, plus a workable relink mechanism or another compliant distribution method. License text alone is insufficient. Validate against the final binaries.' },
-    [ordered]@{ Component='DXC API headers'; Item='Full upstream license missing from vendored directory'; Detail='README identifies upstream revision 6b6f40200bea5ed99367513f53f6a28e52fd3d0e. Retrieve and verify its LICENSE.TXT; the two collected header notices are not replacements.' },
-    [ordered]@{ Component='disruptorplus'; Item='Upstream license and revision not present in vendored header directory'; Detail='Runtime rexcore links this header-only queue. Establish exact provenance and preserve the applicable upstream license.' },
     [ordered]@{ Component='Crypto SHA256'; Item='Historical zlib terms'; Detail='The source says altered for Xenia and licensed under zlib when acquired, but supplies only a website reference. Preserve attribution and verify the exact historical full terms.' },
     [ordered]@{ Component='SDL3, FFmpeg and generated resources'; Item='Nested notices and source coverage'; Detail='Review additional embedded notices in selected source/header/resource inputs (including fonts and Windows HID helpers). This reviewed allowlist is not an exhaustive per-file scan or link map.' },
     [ordered]@{ Component='Microsoft redistributable DLLs'; Item='Redistribution evidence'; Detail='Record exact Visual C++ runtime versions and applicable redistribution terms for the final bundled DLLs. They are outside this SDK-source collector.' },

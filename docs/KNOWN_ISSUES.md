@@ -1,25 +1,34 @@
-# Known issues and planned work
+# Known issues and roadmap
 
-## Current evidence
+## Current limitations
 
-On one Windows PC, the user tested Free Skate, initial campaign gameplay, instant replay, USB DualSense without DS4Windows, and Alt-Tab. The latest unlimited-FPS session was reported much smoother and visually correct after native GPU completion was synchronized at eligible guest idle-clean requests. This is a promising development build, not full-game certification.
+| Area | Status |
+| --- | --- |
+| Distribution | Source is public. A downloadable Windows player release is still in preparation. |
+| Game revision | Only the executable listed in [INSTALL.md](INSTALL.md#supported-game-version) is accepted. |
+| Platforms | Windows x64 / Direct3D 12 only. |
+| Campaign | Opening campaign gameplay works; full progression, all missions, and photo challenges have not been validated. |
+| Saves | Existing career save/reload works in the development build. Migration, additional save cases, and interrupted-save recovery need testing. |
+| Controllers | USB DualSense direct input has been tested. Xbox hardware, wireless connections, reconnects, and multiple controllers need broader coverage. |
+| Startup | A black loading screen can precede the title screen. |
+| Performance | Shader preparation can cause pauses. FPS settings are targets, not guaranteed frame rates. |
+| Graphics | Use the supplied launchers. Unlimited FPS without their synchronization settings can produce colored stripes and black surfaces. |
+| Display | 2× rendering is the default. 3×/4× quality, 4K output, and monitor selection need further validation. |
+| Ultrawide | True 21:9 and 32:9 support is not implemented. Use the original aspect ratio with side bars. |
+| Hardware coverage | Minimum performance specifications and installation on a clean Windows PC are not yet established. |
 
-## Open issues
+A graphics synchronization timeout stops the game instead of continuing with incomplete GPU work. Include the latest log if this occurs.
 
-- Full campaign progression, all missions/photo challenges, and long-session stability are unverified.
-- A full exit/relaunch restored the user's existing skater and progress on the development PC. Save migration, additional slots/content, and interrupted-save recovery still need testing.
-- Complete Xbox/PlayStation button and trigger coverage, reconnects, wireless input, and multiple controllers need testing.
-- Startup can remain black while loading. Shader preparation can still cause pauses.
-- Frame-rate labels are targets. Earlier paced 60/120 tests measured roughly 29/49 guest swaps per second in selected windows on the test machine. These are not monitor FPS measurements or matched performance benchmarks.
-- Unlimited presentation without the launcher's synchronization profile previously produced colored stripes and black surfaces. The successful fix has only brief single-machine gameplay coverage. It handles eligible idle-clean requests between closed frames, not every Xbox 360 GPU wait operation. A failed five-second fence wait stops the game rather than continuing with unverified completion.
-- 2x quality was reported sharper, smooth, and visually clean in a short test on one PC. 3x/4x and longer high-quality sessions remain unverified. Proper 32:9/21:9 camera, HUD, menus, replay, cutscenes, and postprocessing are not implemented or validated.
-- Clean-machine installation, GPU/driver compatibility, and minimum system requirements remain unverified.
-- No public binary release is ready yet. Project license selection and binary dependency notices still need completion.
+## Planned work
 
-## Work order
+- Complete portable-package installation, controller, audio, and relaunch checks on additional PCs.
+- Expand campaign, save, replay, and long-session testing.
+- Measure performance across GPU families and rendering profiles.
+- Add ultrawide camera support with correct HUD, menus, replay, cutscenes, and effects.
+- Complete runtime source materials, dependency notices, release notes, and checksums for a player download.
 
-1. Preserve the clean unlimited baseline and complete repeat gameplay/save/reload testing.
-2. Expand 2x coverage, validate 4x quality and monitor selection separately from frame timing.
-3. Add proper ultrawide projection with an explicit 16:9 fallback, then correct HUD/menu placement and test culling, replay, and effects.
-4. Validate a portable package on a clean Windows PC and more than one GPU/controller family.
-5. Finish notices, source/build reproducibility, release notes, hashes, and installation instructions before publishing.
+Progress toward the first player release is tracked in the [maintainer checklist](RELEASE_CHECKLIST.md).
+
+## Report a problem
+
+Use the [issue tracker](https://github.com/christianortel/skate2-recompile-pc/issues). Include the build/commit, Windows version, GPU/driver, controller, launcher, game location, and reproduction steps. State whether the issue also occurs with **Launch Skate 2 - 1x Performance.cmd**. Remove personal paths from logs and keep game files and saves out of reports.

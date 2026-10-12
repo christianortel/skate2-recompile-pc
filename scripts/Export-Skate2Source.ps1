@@ -11,7 +11,7 @@ $exportRoot = Join-Path $workspace 'source-exports'
 # This is the complete inclusion policy. Do not replace it with recursive copy,
 # git ls-files, or a wildcard: this workspace also contains private game data.
 $allowlist = @(
-    '.gitignore', 'README.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md',
+    '.gitignore', '.gitattributes', 'README.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md',
     'Import Game Files.cmd', 'Launch Skate 2.cmd', 'Launch Skate 2 - 60 FPS.cmd',
     'Launch Skate 2 - Unlocked FPS.cmd', 'Launch Skate 2 - 2x Quality.cmd', 'Launch Skate 2 - 4x Quality.cmd',
     'Launch Skate 2 - 1x Performance.cmd',
@@ -55,6 +55,7 @@ $allowlist = @(
     'licenses/ImGui-stb_truetype-LICENSE.txt', 'licenses/ImGui-stb_textedit-LICENSE.txt',
     'licenses/stb_image-LICENSE.txt', 'licenses/RenderDoc-API-LICENSE.txt',
     'licenses/DXC-dxcapi-NOTICE.txt', 'licenses/DXC-DxbcConverter-NOTICE.txt',
+    'licenses/DXC-LICENSE.txt', 'licenses/disruptorplus-LICENSE.txt',
     'licenses/libmspack-COPYING.LIB.txt', 'licenses/libmspack-LZX-NOTICE.txt',
     'licenses/FFmpeg-COPYING.LGPLv2.1.txt', 'licenses/FFmpeg-LICENSE.md',
     'licenses/FFmpeg-IJG-jfdctfst-NOTICE.txt', 'licenses/FFmpeg-IJG-jfdctint-NOTICE.txt',

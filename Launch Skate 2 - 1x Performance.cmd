@@ -2,7 +2,7 @@
 setlocal
 rem Let Windows PowerShell use its native module defaults, including when called from PS7.
 set "PSModulePath="
-echo Starting original render quality with the tested GPU synchronization profile.
+echo Starting 1x rendering with unlimited FPS.
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\Launch-Skate2.ps1" -FrameRate unlimited -RenderScale 1
 if errorlevel 1 (
     pause
