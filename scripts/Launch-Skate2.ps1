@@ -5,15 +5,36 @@ param(
     [switch]$Diagnostics,
     [switch]$InputDiagnostics,
     [switch]$PerformanceCapture,
+    # -FrameRate, -RenderScale and -RenderTargetPath are passed to the game only
+    # when given. Otherwise the value saved in skate2.toml applies, or the
+    # game's default profile when none is saved: unlimited, 2x and ROV.
     [ValidateSet('original', '60', '120', '144', '165', '200', '240', 'unlimited')]
     [string]$FrameRate,
+    # Frame limiter: off, auto (slightly below the display refresh rate), or a
+    # frame rate from 20 to 1000. Most useful with -FrameRate unlimited.
+    [ValidatePattern('^(off|auto|[0-9]{2,4}(\.[0-9]+)?)$')]
+    [string]$FrameLimit,
+    # NVIDIA only: on sets Power management mode to Prefer maximum performance
+    # in the driver profile for skate2.exe, restore removes it again. The driver
+    # keeps the change. See docs/DISPLAY.md.
+    [ValidateSet('off', 'on', 'restore')]
+    [string]$NvidiaMaxPerformance,
+    # World detail, 1 = original: how far away small world objects are drawn,
+    # and how far away character and vehicle models keep full detail. Applies
+    # live. See docs/DISPLAY.md. Text rather than [double]: with -File,
+    # PowerShell reads a comma as a thousands separator, so 0,5 would bind as
+    # 5. Same pattern as the native launcher; the range is checked below.
+    [ValidatePattern('^[0-9](\.[0-9]{1,3})?$')]
+    [string]$DrawDistanceScale,
+    [ValidatePattern('^[0-9](\.[0-9]{1,3})?$')]
+    [string]$LodDistanceScale,
     [ValidateSet('default', 'synchronous-shaders', 'synchronous-memexport')]
     [string]$GraphicsTest = 'synchronous-shaders',
     [switch]$PresentIdleCleanSync = $true,
     [ValidateSet(1, 2, 3, 4)][int]$RenderScale,
     # Render target path. ROV is the default; RTV is faster, especially on
     # Nvidia GPUs. See docs/PERFORMANCE.md.
-    [ValidateSet('rov', 'rtv')][string]$RenderTargetPath = 'rov',
+    [ValidateSet('rov', 'rtv')][string]$RenderTargetPath,
     # Hand recorded GPU work to the host GPU every N draws within a frame
     # (0 = only at frame boundaries).
     [ValidateRange(0, 65536)][int]$SubmitDrawInterval,
@@ -27,7 +48,21 @@ param(
 $ErrorActionPreference = 'Stop'
 $launchRoot = Split-Path -Parent $PSScriptRoot
 
+# A distance scale from 0.5 to 8, read with the invariant culture so the
+# result does not depend on the system locale. Digits and a dot only.
+function Assert-DistanceScale([string]$Label, [string]$Text) {
+    $value = 0.0
+    $parsed = [double]::TryParse($Text, [Globalization.NumberStyles]::AllowDecimalPoint,
+        [Globalization.CultureInfo]::InvariantCulture, [ref]$value)
+    if (-not $parsed -or $value -lt 0.5 -or $value -gt 8) {
+        throw ("$Label must be a number from 0.5 to 8 with at most three decimals and a dot " +
+            "as the decimal separator, such as 1.5. Received: $Text")
+    }
+}
+
 try {
+    if ($PSBoundParameters.ContainsKey('DrawDistanceScale')) { Assert-DistanceScale 'Draw distance' $DrawDistanceScale }
+    if ($PSBoundParameters.ContainsKey('LodDistanceScale')) { Assert-DistanceScale 'LOD distance' $LodDistanceScale }
     . (Join-Path $PSScriptRoot 'Check-Skate2Runtime.ps1')
     $runtimeStatus = Get-Skate2RuntimeStatus
     $candidates = @(
@@ -67,14 +102,27 @@ try {
     $cacheRoot = Join-Path $appRoot 'cache'
     $arguments = @(
         "--game_data_root=$gameRoot", "--user_data_root=$userRoot", "--cache_root=$cacheRoot",
-        '--gpu_plugin=xenos', '--input_backend=sdl', "--render_target_path_d3d12=$RenderTargetPath"
+        '--gpu_plugin=xenos', '--input_backend=sdl'
     )
+    if ($PSBoundParameters.ContainsKey('RenderTargetPath')) { $arguments += "--render_target_path_d3d12=$($RenderTargetPath.ToLowerInvariant())" }
     if ($KeyboardTest) { $arguments += '--mnk_mode=true' }
     if ($InputDiagnostics) { $arguments += '--input_diag=true' }
     if ($PSBoundParameters.ContainsKey('FrameRate')) { $arguments += "--skate2_frame_rate=$($FrameRate.ToLowerInvariant())" }
+    if ($PSBoundParameters.ContainsKey('FrameLimit')) { $arguments += "--skate2_frame_limit=$($FrameLimit.ToLowerInvariant())" }
+    if ($PSBoundParameters.ContainsKey('NvidiaMaxPerformance')) { $arguments += "--skate2_nvidia_max_performance=$($NvidiaMaxPerformance.ToLowerInvariant())" }
+    # The validated text is passed unchanged: it already uses a dot, whatever
+    # the locale, and is never reformatted through a number.
+    if ($PSBoundParameters.ContainsKey('DrawDistanceScale')) { $arguments += "--skate2_draw_distance_scale=$DrawDistanceScale" }
+    if ($PSBoundParameters.ContainsKey('LodDistanceScale')) { $arguments += "--skate2_lod_distance_scale=$LodDistanceScale" }
     # Each diagnostic changes one graphics option, without saving a preference.
     # Keep frame mode and the existing cache constant for a controlled comparison.
-    if ($GraphicsTest -eq 'synchronous-shaders') { $arguments += '--async_shader_compilation=false' }
+    # The game itself now defaults to synchronous shaders (its default profile),
+    # so the other two diagnostics select asynchronous compilation explicitly.
+    if ($GraphicsTest -eq 'synchronous-shaders') {
+        $arguments += '--async_shader_compilation=false'
+    } else {
+        $arguments += '--async_shader_compilation=true'
+    }
     if ($GraphicsTest -eq 'synchronous-memexport') { $arguments += '--readback_memexport_fast=false' }
     # Reproduce the successful run020 profile. Explicit false is available for
     # controlled comparisons and must override a previously saved true value.

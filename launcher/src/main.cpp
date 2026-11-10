@@ -29,8 +29,14 @@ struct Result {
   bool check_only = false;
   bool truncated = false;
   DWORD exit_code = 1;
-  std::wstring frame_rate = L"unlimited";
-  std::wstring render_scale = L"2";
+  // Empty: not passed; the value saved in skate2.toml applies, or the game's
+  // default profile (unlimited, 2x) when none is saved.
+  std::wstring frame_rate;
+  std::wstring render_scale;
+  std::wstring frame_limit;  // Empty: not passed; the saved or default value applies.
+  std::wstring nvidia_max_performance;  // Empty: not passed; the saved or default value applies.
+  std::wstring draw_distance_scale;  // Empty: not passed; the saved or default value applies.
+  std::wstring lod_distance_scale;  // Empty: not passed; the saved or default value applies.
   std::wstring report;
   std::wstring root;
   std::wstring script;
@@ -117,6 +123,44 @@ bool AbsolutePath(const std::wstring& path) {
          (path.size() >= 3 && path[0] == L'\\' && path[1] == L'\\');
 }
 
+// off, auto, or a whole frame rate from 20 to 1000. Digits only, so nothing
+// else can reach the PowerShell command line.
+bool ValidFrameLimit(const std::wstring& value) {
+  if (value == L"off" || value == L"auto") return true;
+  if (value.empty() || value.size() > 4) return false;
+  for (wchar_t ch : value) {
+    if (ch < L'0' || ch > L'9') return false;
+  }
+  const int rate = std::stoi(value);
+  return rate >= 20 && rate <= 1000;
+}
+
+// Exact lowercase off, on or restore, so nothing else can reach the PowerShell
+// command line.
+bool ValidNvidiaMaxPerformance(const std::wstring& value) {
+  return value == L"off" || value == L"on" || value == L"restore";
+}
+
+// A scale from 0.5 to 8 with at most three decimals, such as 1, 2.5 or 0.75:
+// one digit, then optionally a dot and one to three digits. Digits and the dot
+// only, so nothing else can reach the PowerShell command line, and a decimal
+// comma cannot be misread.
+bool ValidDistanceScale(const std::wstring& value) {
+  if (value.empty() || value.size() > 5) return false;
+  if (value[0] < L'0' || value[0] > L'9') return false;
+  int thousandths = (value[0] - L'0') * 1000;
+  if (value.size() > 1) {
+    if (value[1] != L'.' || value.size() == 2) return false;
+    int place = 100;
+    for (size_t i = 2; i < value.size(); ++i) {
+      if (value[i] < L'0' || value[i] > L'9') return false;
+      thousandths += (value[i] - L'0') * place;
+      place /= 10;
+    }
+  }
+  return thousandths >= 500 && thousandths <= 8000;
+}
+
 bool ParseArguments(Result& result) {
   int count = 0;
   wchar_t** args = CommandLineToArgvW(GetCommandLineW(), &count);
@@ -132,7 +176,9 @@ bool ParseArguments(Result& result) {
   for (int i = 1; i < count && result.error.empty(); ++i) {
     const std::wstring name = args[i];
     if (name == L"--check-only") continue;
-    if (name != L"--report" && name != L"--frame-rate" && name != L"--render-scale") {
+    if (name != L"--report" && name != L"--frame-rate" && name != L"--render-scale" &&
+        name != L"--frame-limit" && name != L"--nvidia-max-performance" &&
+        name != L"--draw-distance" && name != L"--lod-distance") {
       result.error = L"Unknown launcher option: " + name;
       break;
     }
@@ -153,6 +199,28 @@ bool ParseArguments(Result& result) {
       if (std::find(supported.begin(), supported.end(), value) == supported.end())
         result.error = L"Frame rate must be original, 60, 120, 144, 165, 200, 240, or unlimited.";
       else result.frame_rate = value;
+    }
+    if (name == L"--frame-limit") {
+      if (!ValidFrameLimit(value))
+        result.error = L"Frame limit must be off, auto, or a frame rate from 20 to 1000.";
+      else result.frame_limit = value;
+    }
+    if (name == L"--nvidia-max-performance") {
+      if (!ValidNvidiaMaxPerformance(value))
+        result.error = L"NVIDIA max performance must be off, on, or restore.";
+      else result.nvidia_max_performance = value;
+    }
+    if (name == L"--draw-distance") {
+      if (!ValidDistanceScale(value))
+        result.error = L"Draw distance must be a number from 0.5 to 8 with at most three "
+                       L"decimals and a dot as the decimal separator, such as 1.5.";
+      else result.draw_distance_scale = value;
+    }
+    if (name == L"--lod-distance") {
+      if (!ValidDistanceScale(value))
+        result.error = L"LOD distance must be a number from 0.5 to 8 with at most three "
+                       L"decimals and a dot as the decimal separator, such as 1.5.";
+      else result.lod_distance_scale = value;
     }
   }
   LocalFree(args);
@@ -305,8 +373,16 @@ void Launch(Result& result) {
   startup.lpAttributeList = attribute_list;
   std::wstring command = Quote(result.powershell) +
       L" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File " +
-      Quote(result.script) + L" -FrameRate " + Quote(result.frame_rate) +
-      L" -RenderScale " + Quote(result.render_scale);
+      Quote(result.script);
+  if (!result.frame_rate.empty()) command += L" -FrameRate " + Quote(result.frame_rate);
+  if (!result.render_scale.empty()) command += L" -RenderScale " + Quote(result.render_scale);
+  if (!result.frame_limit.empty()) command += L" -FrameLimit " + Quote(result.frame_limit);
+  if (!result.nvidia_max_performance.empty())
+    command += L" -NvidiaMaxPerformance " + Quote(result.nvidia_max_performance);
+  if (!result.draw_distance_scale.empty())
+    command += L" -DrawDistanceScale " + Quote(result.draw_distance_scale);
+  if (!result.lod_distance_scale.empty())
+    command += L" -LodDistanceScale " + Quote(result.lod_distance_scale);
   if (result.check_only) command += L" -CheckOnly";
   PROCESS_INFORMATION process{};
   const BOOL created = CreateProcessW(result.powershell.c_str(), command.data(),
@@ -346,7 +422,13 @@ bool WriteReport(const Result& result) {
   if (result.report.empty() || !AbsolutePath(result.report)) return false;
   const std::string json = "{\n  \"schemaVersion\": 1,\n  \"checkOnly\": true,\n  \"exitCode\": " +
       std::to_string(result.exit_code) + ",\n  \"frameRate\": " + Json(result.frame_rate) +
-      ",\n  \"renderScale\": " + Utf8(result.render_scale) + ",\n  \"workingDirectory\": " + Json(result.root) +
+      ",\n  \"renderScale\": " +
+      (result.render_scale.empty() ? std::string("null") : Utf8(result.render_scale)) +
+      ",\n  \"frameLimit\": " + Json(result.frame_limit) +
+      ",\n  \"nvidiaMaxPerformance\": " + Json(result.nvidia_max_performance) +
+      ",\n  \"drawDistanceScale\": " + Json(result.draw_distance_scale) +
+      ",\n  \"lodDistanceScale\": " + Json(result.lod_distance_scale) +
+      ",\n  \"workingDirectory\": " + Json(result.root) +
       ",\n  \"script\": " + Json(result.script) + ",\n  \"powerShell\": " + Json(result.powershell) +
       ",\n  \"launcherError\": " + Json(result.error) + ",\n  \"outputTruncated\": " +
       (result.truncated ? "true" : "false") + ",\n  \"output\": " +

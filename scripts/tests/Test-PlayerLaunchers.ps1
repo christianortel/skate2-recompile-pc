@@ -89,7 +89,8 @@ function Invoke-FixtureChild([string]$Executable, [string]$Arguments, [string]$R
 $stub = @'
 [CmdletBinding()]
 param([string]$FrameRate, [int]$RenderScale, [string]$GraphicsTest, [string]$RenderTargetPath,
-      [int]$SubmitDrawInterval, [switch]$AsyncSubmission)
+      [int]$SubmitDrawInterval, [switch]$AsyncSubmission, [string]$FrameLimit,
+      [string]$SourceDirectory, [string]$IsoPath)
 $ErrorActionPreference = 'Stop'
 $received = @{}
 foreach ($name in $PSBoundParameters.Keys) {
@@ -142,12 +143,14 @@ if ($ps7ModulePath) {
     $moduleNegativeControls = 1
 }
 
+# The default-profile wrappers pass no options, so values saved in skate2.toml
+# apply, or the game's default profile when none are saved.
 $wrappers = @(
     @{ Name='Import Game Files.cmd'; Target='Import-Skate2Data.ps1'; Expected=@{} },
-    @{ Name='Launch Skate 2.cmd'; Target='Launch-Skate2.ps1'; Expected=@{ FrameRate='unlimited'; RenderScale=2 } },
-    @{ Name='Launch Skate 2 - Unlocked FPS.cmd'; Target='Launch-Skate2.ps1'; Expected=@{ FrameRate='unlimited'; RenderScale=2 } },
+    @{ Name='Launch Skate 2.cmd'; Target='Launch-Skate2.ps1'; Expected=@{} },
+    @{ Name='Launch Skate 2 - Unlocked FPS.cmd'; Target='Launch-Skate2.ps1'; Expected=@{} },
     @{ Name='Launch Skate 2 - 1x Performance.cmd'; Target='Launch-Skate2.ps1'; Expected=@{ FrameRate='unlimited'; RenderScale=1 } },
-    @{ Name='Launch Skate 2 - 2x Quality.cmd'; Target='Launch-Skate2.ps1'; Expected=@{ FrameRate='unlimited'; RenderScale=2 } },
+    @{ Name='Launch Skate 2 - 2x Quality.cmd'; Target='Launch-Skate2.ps1'; Expected=@{} },
     @{ Name='Launch Skate 2 - 4x Quality.cmd'; Target='Launch-Skate2.ps1'; Expected=@{ FrameRate='unlimited'; RenderScale=4 } },
     @{ Name='Launch Skate 2 - 60 FPS.cmd'; Target='Launch-Skate2.ps1'; Expected=@{ FrameRate='60'; GraphicsTest='synchronous-shaders' } },
     @{ Name='Launch Skate 2 - RTV Performance.cmd'; Target='Launch-Skate2.ps1'; Expected=@{ FrameRate='unlimited'; RenderScale=2; RenderTargetPath='rtv'; SubmitDrawInterval=1024; AsyncSubmission=$true } }
@@ -184,12 +187,125 @@ foreach ($wrapper in $wrappers) {
         $results.Add([pscustomobject]@{ Case=$wrapper.Name; StubExit=$stubExit; ExitCode=$result.ExitCode; SourceSHA256=(Get-FileHash -LiteralPath $source).Hash; Record=$record; Stdout=$result.Stdout; Stderr=$result.Stderr })
     }
 }
+# Dropping an ISO or a folder onto the importer wrapper passes it through as
+# the matching parameter, including paths with spaces, '&' and an apostrophe.
+$importCopy = Join-Path $playerRoot 'Import Game Files.cmd'
+foreach ($drop in @(
+    @{ Name='dropped-iso'; Argument=(Join-Path $fixture "Skate 2 & Tester's.ISO"); Parameter='IsoPath' },
+    @{ Name='dropped-folder'; Argument=(Join-Path $fixture "Extracted & Tester's game"); Parameter='SourceDirectory' }
+)) {
+    $caseNumber++
+    $resultPath = Join-Path $fixture ('case-{0:D2}.json' -f $caseNumber)
+    $result = Invoke-FixtureChild $commandProcessor ('/d /s /c ""' + $importCopy + '" "' + $drop.Argument + '""') $resultPath 0
+    Assert-LauncherCondition (Test-Path -LiteralPath $resultPath) "Stub never ran: $($drop.Name). $($result.Stderr)"
+    $record = Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json
+    Assert-LauncherCondition ($record.Apartment -eq 'STA') "Importer lost its STA dialog requirement: $($drop.Name)"
+    Assert-LauncherCondition (@($record.Bound.PSObject.Properties).Count -eq 1) "Unexpected importer arguments: $($drop.Name)"
+    Assert-LauncherCondition ($record.Bound.($drop.Parameter) -eq $drop.Argument) "Dropped path was not passed as -$($drop.Parameter)"
+    $results.Add([pscustomobject]@{ Case=$drop.Name; StubExit=0; ExitCode=$result.ExitCode; Record=$record; Stdout=$result.Stdout; Stderr=$result.Stderr })
+}
+
+# The real launch helper in -CheckOnly mode, with each wrapper's options and
+# with single explicit options: which game settings it passes. A default
+# profile must pass no frame rate, render scale or render path, so the values
+# saved in skate2.toml apply. The helper runs against a placeholder skate2.exe
+# that -CheckOnly never starts, and finds the imported game files through the
+# developer locator; it only hashes default.xex. Skipped without game files.
+$script:helperCases = 0
+$helperSkipped = $null
+$gameCandidates = @(Join-Path $workspace 'game')
+$workspaceLocator = Join-Path $workspace '.local\game-directory.txt'
+if (Test-Path -LiteralPath $workspaceLocator -PathType Leaf) { $gameCandidates += (Get-Content -LiteralPath $workspaceLocator -Raw).Trim() }
+$gameDirectory = $gameCandidates | Where-Object {
+    (Test-Path -LiteralPath (Join-Path $_ 'default.xex') -PathType Leaf) -and
+    (Test-Path -LiteralPath (Join-Path $_ 'data') -PathType Container)
+} | Select-Object -First 1
+if (-not $gameDirectory) {
+    $helperSkipped = 'No imported game files were found; the real-helper CheckOnly cases were skipped.'
+} else {
+    $helperRoot = Join-Path $fixture 'real-helper'
+    $helperScripts = Join-Path $helperRoot 'scripts'
+    [IO.Directory]::CreateDirectory($helperScripts) | Out-Null
+    [IO.Directory]::CreateDirectory((Join-Path $helperRoot '.local')) | Out-Null
+    foreach ($name in @('Launch-Skate2.ps1', 'Check-Skate2Runtime.ps1')) {
+        Copy-Item -LiteralPath (Join-Path $workspace ('scripts\' + $name)) -Destination (Join-Path $helperScripts $name)
+    }
+    [IO.File]::WriteAllBytes((Join-Path $helperRoot 'skate2.exe'), [byte[]]@())
+    [IO.File]::WriteAllText((Join-Path $helperRoot '.local\game-directory.txt'), $gameDirectory, [Text.UTF8Encoding]::new($false))
+    $helperScript = Join-Path $helperScripts 'Launch-Skate2.ps1'
+
+    function Get-HelperArguments([string]$Case, [hashtable]$Parameters) {
+        $report = & $helperScript -CheckOnly @Parameters
+        Assert-LauncherCondition ($LASTEXITCODE -eq 0 -and $null -ne $report) "Real helper CheckOnly failed: $Case"
+        $script:helperCases++
+        $gameArguments = [string[]]@($report.Arguments)
+        $results.Add([pscustomobject]@{ Case=('real-helper: ' + $Case); Parameters=$Parameters; Arguments=$gameArguments })
+        return ,$gameArguments
+    }
+
+    function Assert-ProfileArguments([string]$Case, [string[]]$GameArguments, [hashtable]$Parameters) {
+        $frame = @($GameArguments | Where-Object { $_ -like '--skate2_frame_rate=*' })
+        if ($Parameters.ContainsKey('FrameRate')) {
+            Assert-LauncherCondition ($frame.Count -eq 1 -and $frame[0] -ceq ('--skate2_frame_rate=' + $Parameters.FrameRate)) "Frame rate not passed as given: $Case"
+        } else {
+            Assert-LauncherCondition ($frame.Count -eq 0) "Frame rate passed without being given, overriding the saved value: $Case"
+        }
+        $scale = @($GameArguments | Where-Object { $_ -like '--resolution_scale=*' -or $_ -like '--draw_resolution_scale_*' })
+        if ($Parameters.ContainsKey('RenderScale')) {
+            $expectedScale = '--resolution_scale=1 --draw_resolution_scale_x={0} --draw_resolution_scale_y={0}' -f $Parameters.RenderScale
+            Assert-LauncherCondition (($scale -join ' ') -ceq $expectedScale) "Render scale not passed as given: $Case"
+        } else {
+            Assert-LauncherCondition ($scale.Count -eq 0) "Render scale passed without being given, overriding the saved value: $Case"
+        }
+        $path = @($GameArguments | Where-Object { $_ -like '--render_target_path_d3d12=*' })
+        if ($Parameters.ContainsKey('RenderTargetPath')) {
+            Assert-LauncherCondition ($path.Count -eq 1 -and $path[0] -ceq ('--render_target_path_d3d12=' + $Parameters.RenderTargetPath.ToLowerInvariant())) "Render path not passed as given: $Case"
+        } else {
+            Assert-LauncherCondition ($path.Count -eq 0) "Render path passed without being given, overriding the saved value: $Case"
+        }
+        # The synchronization settings of every supplied profile stay explicit.
+        $graphicsTest = 'synchronous-shaders'
+        if ($Parameters.ContainsKey('GraphicsTest')) { $graphicsTest = $Parameters.GraphicsTest }
+        $shaders = @($GameArguments | Where-Object { $_ -like '--async_shader_compilation=*' })
+        $expectedShaders = '--async_shader_compilation=' + ($(if ($graphicsTest -eq 'synchronous-shaders') { 'false' } else { 'true' }))
+        Assert-LauncherCondition ($shaders.Count -eq 1 -and $shaders[0] -ceq $expectedShaders) "Shader compilation option changed: $Case"
+        $memexport = @($GameArguments | Where-Object { $_ -like '--readback_memexport_fast=*' })
+        if ($graphicsTest -eq 'synchronous-memexport') {
+            Assert-LauncherCondition ($memexport.Count -eq 1 -and $memexport[0] -ceq '--readback_memexport_fast=false') "Memexport diagnostic not passed: $Case"
+        } else {
+            Assert-LauncherCondition ($memexport.Count -eq 0) "Unexpected memexport option: $Case"
+        }
+        Assert-LauncherCondition (@($GameArguments | Where-Object { $_ -ceq '--d3d12_present_idleclean_sync=true' }).Count -eq 1) "GPU idle-clean synchronization not passed: $Case"
+    }
+
+    $helperChecks = @()
+    foreach ($wrapper in $wrappers | Where-Object { $_.Target -eq 'Launch-Skate2.ps1' }) {
+        $helperChecks += @{ Case=$wrapper.Name; Parameters=$wrapper.Expected.Clone() }
+    }
+    $helperChecks += @(
+        @{ Case='explicit frame rate only'; Parameters=@{ FrameRate='144' } },
+        @{ Case='explicit original frame rate'; Parameters=@{ FrameRate='original' } },
+        @{ Case='explicit render scale only'; Parameters=@{ RenderScale=3 } },
+        @{ Case='explicit ROV render path'; Parameters=@{ RenderTargetPath='rov' } },
+        @{ Case='explicit RTV render path'; Parameters=@{ RenderTargetPath='rtv' } },
+        @{ Case='explicit uppercase RTV render path'; Parameters=@{ RenderTargetPath='RTV' } },
+        @{ Case='explicit unlimited and 2x'; Parameters=@{ FrameRate='unlimited'; RenderScale=2 } },
+        @{ Case='asynchronous-shader diagnostic'; Parameters=@{ GraphicsTest='default' } },
+        @{ Case='memexport diagnostic'; Parameters=@{ GraphicsTest='synchronous-memexport' } }
+    )
+    foreach ($check in $helperChecks) {
+        $gameArguments = Get-HelperArguments $check.Case $check.Parameters
+        Assert-ProfileArguments $check.Case $gameArguments $check.Parameters
+    }
+}
 Assert-LauncherCondition ((Get-ExecutionPolicy -List | ConvertTo-Json -Compress) -eq $policyBefore) 'Persistent or parent-process policy changed.'
 Assert-LauncherCondition ($env:PSModulePath -ceq $modulePathBefore -and $env:PATH -ceq $pathBefore -and $env:PSExecutionPolicyPreference -ceq $policyEnvironmentBefore) 'The parent environment changed.'
 $summary = [ordered]@{
     Passed=$true
     Checks=$script:launcherChecks
     WrapperCases=$caseNumber
+    RealHelperCases=$script:helperCases
+    RealHelperSkipped=$helperSkipped
     NegativeControls=(2 + $moduleNegativeControls)
     FixtureHostVersion=$PSVersionTable.PSVersion.ToString()
     InjectedPS7ModulePath=$ps7ModulePath
@@ -202,4 +318,6 @@ $summary = [ordered]@{
     Limits='Harmless fixture scripts only; no real game/import, GPU, clean-Windows installation, or organization-enforced policy acceptance was tested.'
 }
 $summary | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $fixture 'verification.json') -Encoding utf8
-Write-Output "PASS: $($script:launcherChecks) checks; $caseNumber real-wrapper cases, two policy controls, and $moduleNegativeControls module-path control. Evidence: $fixture"
+$helperSummary = "$($script:helperCases) real-helper CheckOnly cases"
+if ($helperSkipped) { $helperSummary = $helperSkipped }
+Write-Output "PASS: $($script:launcherChecks) checks; $caseNumber real-wrapper cases, two policy controls, and $moduleNegativeControls module-path control. $helperSummary. Evidence: $fixture"

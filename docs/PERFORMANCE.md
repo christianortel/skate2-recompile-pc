@@ -32,7 +32,13 @@ The draw-extent estimate executes the vertex shader of such draws on the CPU onl
 | `d3d12_texture_placed_resources` | true | Place textures up to 16 MB in shared 64 MB heaps; textures are only destroyed after their last GPU use, so ranges are reused immediately |
 | `d3d12_async_occlusion_queries` | true | Leave the guest's pending markers in place and write query results when the GPU has completed them; pending results are delivered before the command processor waits for the guest |
 
-`Launch Skate 2 - RTV Performance.cmd` selects RTV, 2×, unlimited frame rate, a submit interval of 1024 and the submission thread. The default launchers are unchanged and keep the ROV path. The RTV profile requires a runtime built with these patches; older runtimes reject the new settings.
+The game-side frame limiter, `skate2_frame_limit` (`off`, `auto` or a rate from 20 to 1000), paces each guest swap on an absolute schedule: deadlines advance by exactly one frame interval, the thread sleeps on a high-resolution waitable timer and spins for the final millisecond, and a frame more than one interval late restarts the schedule instead of rushing to catch up. `auto` targets the refresh rate of the window's monitor minus 3 frames or 3%, whichever is larger. See [Display and performance](DISPLAY.md#frame-limiter).
+
+On NVIDIA GPUs, `skate2_nvidia_max_performance=on` sets the driver's Power management mode to Prefer maximum performance for `skate2.exe`, which can help because the CPU-side command processor limits the frame rate in dense views, leaving the GPU partly idle so the driver may drop it to lower clocks; see [NVIDIA power management](DISPLAY.md#nvidia-power-management).
+
+`skate2_draw_distance_scale` and `skate2_lod_distance_scale` (0.5 to 8, default 1) push out the distance at which world objects stop being drawn and the distances at which characters and vehicles switch to lower-detail models. Values above 1 cost CPU and GPU time: a longer draw distance adds draws, which the command processor thread must translate in the dense views that already limit the frame rate, and detailed models add GPU work. Other passes, such as shadows, probably draw more too. The cost has not been measured; see [Draw distance and detail](DISPLAY.md#draw-distance-and-detail).
+
+`Launch Skate 2 - RTV Performance.cmd` selects RTV, 2×, unlimited frame rate, a submit interval of 1024 and the submission thread. The default launchers pass no render path: they use the one saved from the settings panel or F4, or ROV when none is saved. The RTV profile requires a runtime built with these patches; older runtimes reject the new settings.
 
 ## Measurements
 
@@ -63,8 +69,35 @@ Submit intervals of 256, 512 and 1024 were compared; 1024 was fastest and showed
 ## Not yet verified
 
 - Lens-flare visibility with asynchronous occlusion queries has not been checked against the original behavior.
+- The frame limiter's effect on frame-time consistency has not been measured in gameplay yet.
+- The effect of `skate2_nvidia_max_performance` on frame rate and frame times has not been measured.
+- Draw-distance and LOD-distance scaling have only been checked on the front end. Their in-game visuals and performance cost have not been checked.
+- The GPU trace recorder has not made an in-game capture yet, and no trace has been replayed or opened in Xenia's tools.
+- The settings panel's controller shortcut and controller navigation, the Steam Deck preset on a Deck, and saving from the panel have not been tested.
 - One isolated 159 ms frame with few new textures remains unexplained.
 - AMD and Intel GPUs, other NVIDIA GPUs, and lower-core-count CPUs have not been measured. ROV remains the default for this reason.
+
+## GPU trace capture
+
+The runtime can record the GPU commands of one or more frames, together with the guest memory they use, to a trace file for offline analysis.
+
+Press **F9** in game to record the next frame. The key can be changed as `bind_gpu_trace` in the **Input/Keybinds/System** section of the F4 settings. The trace is written to `logs\gpu_traces\<TITLEID>_<YYYYMMDD-HHMMSS>_frame<N>.xtr` beside `skate2.exe`, where `<N>` is the number of the first recorded frame since startup. The log shows `GPU trace: capture requested`, then `GPU trace: recording 1 frame(s) to <path>` and, once the capture is complete, `GPU trace: wrote <frames> frame(s), <size> MB, to <path>`.
+
+The settings are in the **GPU/Trace** section of the F4 settings, or can be given as `--name=value` options on the `skate2.exe` command line; the launchers do not pass them.
+
+| Setting | Default | Effect |
+| --- | --- | --- |
+| `trace_gpu_frame_count` | 1 | Frames recorded per capture, from 1 to 1000 |
+| `trace_gpu_capture_at_frame` | 0 (off) | Start a capture automatically after this many guest frames since startup. If saved to the config, it triggers on every launch |
+| `trace_gpu_stream` | false | Record everything from startup until exit into one `..._stream.xtr` file; takes effect after a restart |
+| `trace_gpu_prefix` | empty | Output folder; empty uses `logs\gpu_traces` beside the executable |
+
+- The recorded frames run slowly, and the game stalls briefly when a capture starts.
+- Files are large: about 10 MB of EDRAM contents, plus the memory written by the GPU and all data read during the recorded frames.
+- For complete traces, use render scale 1. With resolution scaling the EDRAM snapshot is skipped, and render-to-texture data in the trace may be stale.
+- Complete traces require the Direct3D 12 backend.
+- The files use upstream Xenia's trace format, version 1, so Xenia's trace viewer and trace dump tools built from Xenia source should open them. This has not been tested.
+- No replay tool is included.
 
 ## Measuring a change
 

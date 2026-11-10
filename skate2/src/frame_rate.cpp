@@ -1,5 +1,7 @@
 #include "frame_rate.h"
 
+#include "frame_pacing.h"
+
 #include <rex/cvar.h>
 #include <rex/cvar_validation.h>
 #include <rex/logging.h>
@@ -9,8 +11,12 @@
 #include <mutex>
 #include <string>
 
-REXCVAR_DEFINE_STRING(skate2_frame_rate, "original", "Skate 2",
-    "Frame-rate mode: original, 60, 120, 144, 165, 200, 240, or unlimited. "
+// Unlimited is the default launch profile's mode. As the registered default it
+// applies whenever no saved or command-line value exists, including a direct
+// skate2.exe launch, and Save to config writes only another selection, such as
+// original, so that selection is kept at the next start.
+REXCVAR_DEFINE_STRING(skate2_frame_rate, "unlimited", "Skate 2",
+    "Frame-rate mode: original, 60, 120, 144, 165, 200, 240, or unlimited (default). "
     "Higher rates and unlimited are experimental; actual FPS depends on the scene and hardware. "
     "Optional modes require guest VSync; conflicting live changes are rejected. "
     "Restart required. Original resets saved guest refresh to 60 Hz; an explicit command-line "
@@ -147,6 +153,9 @@ bool ValidateSkate2FrameRate() {
 }
 
 void Skate2PresentationInterval(PPCRegister& r11) {
+  // This hook runs once per guest swap on the guest render thread, before the
+  // swap is handed to the GPU: the frame limiter paces here.
+  PaceSkate2Frame();
   if (configured_settings && configured_settings->interval_override != 0) {
     r11.u64 = configured_settings->interval_override;
   }

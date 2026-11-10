@@ -24,13 +24,25 @@ $payload = Join-Path $fixture 'fixture-payload.txt'
 $expectedHash = (Get-FileHash -LiteralPath $payload -Algorithm SHA256).Hash
 $scriptPath = Join-Path $scripts 'Launch-Skate2.ps1'
 $stub = @'
-param([string]$FrameRate, [int]$RenderScale, [switch]$CheckOnly)
+param([string]$FrameRate, [int]$RenderScale, [string]$FrameLimit, [string]$NvidiaMaxPerformance,
+      [string]$DrawDistanceScale, [string]$LodDistanceScale, [switch]$CheckOnly)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $config = Get-Content -LiteralPath (Join-Path $root 'fixture-config.json') -Raw | ConvertFrom-Json
 $observation = [ordered]@{
+    boundNames = @($PSBoundParameters.Keys | Sort-Object)
+    frameRatePassed = $PSBoundParameters.ContainsKey('FrameRate')
     frameRate = $FrameRate
+    renderScalePassed = $PSBoundParameters.ContainsKey('RenderScale')
     renderScale = $RenderScale
+    frameLimitPassed = $PSBoundParameters.ContainsKey('FrameLimit')
+    frameLimit = $FrameLimit
+    nvidiaMaxPerformancePassed = $PSBoundParameters.ContainsKey('NvidiaMaxPerformance')
+    nvidiaMaxPerformance = $NvidiaMaxPerformance
+    drawDistanceScalePassed = $PSBoundParameters.ContainsKey('DrawDistanceScale')
+    drawDistanceScale = $DrawDistanceScale
+    lodDistanceScalePassed = $PSBoundParameters.ContainsKey('LodDistanceScale')
+    lodDistanceScale = $LodDistanceScale
     checkOnly = [bool]$CheckOnly
     cwd = [Environment]::CurrentDirectory
     scriptRoot = $PSScriptRoot
@@ -113,8 +125,12 @@ try {
     Set-Fixture
     $result = Invoke-Fixture 'defaults'
     $observed = Read-Observation
-    Assert-True ($result.frameRate -eq 'unlimited' -and $result.renderScale -eq 2) 'default profile is unlimited and 2x'
-    Assert-True ($observed.frameRate -eq 'unlimited' -and $observed.renderScale -eq 2 -and $observed.checkOnly) 'helper receives exact default settings and CheckOnly'
+    Assert-True ($result.frameRate -eq '' -and $null -eq $result.renderScale) 'default profile reports no frame rate or render scale, so saved settings apply'
+    Assert-True (-not $observed.frameRatePassed -and -not $observed.renderScalePassed -and $observed.checkOnly) 'helper receives no frame rate or render scale, and CheckOnly'
+    Assert-True ((@($observed.boundNames) -join ',') -eq 'CheckOnly') 'default profile passes no helper option besides CheckOnly'
+    Assert-True (-not $observed.frameLimitPassed -and $result.frameLimit -eq '') 'default profile leaves the frame limit to saved settings'
+    Assert-True (-not $observed.nvidiaMaxPerformancePassed -and $result.nvidiaMaxPerformance -eq '') 'default profile leaves NVIDIA driver settings to saved settings'
+    Assert-True (-not $observed.drawDistanceScalePassed -and -not $observed.lodDistanceScalePassed -and $result.drawDistanceScale -eq '' -and $result.lodDistanceScale -eq '') 'default profile leaves draw and LOD distance to saved settings'
     Assert-True ($result.workingDirectory -eq $fixture -and $observed.cwd -eq $fixture) 'native and helper working directories use executable location'
     Assert-True ($result.script -eq $scriptPath -and $observed.scriptRoot -eq $scripts) 'Unicode and shell-special paths arrive intact'
     Assert-True ($result.powerShell -eq (Join-Path ([Environment]::GetFolderPath('System')) 'WindowsPowerShell\v1.0\powershell.exe')) 'uses absolute native Windows PowerShell independent of PATH'
@@ -125,9 +141,65 @@ try {
     Assert-True ($result.output.Contains('HOST-OUTPUT-MARKER') -and $result.output.Contains('STDOUT-MARKER') -and $result.output.Contains('STDERR-MARKER')) 'captures Write-Host, stdout and stderr'
 
     Set-Fixture
-    $null = Invoke-Fixture 'overrides' @('--render-scale', '1', '--frame-rate', '60')
+    $result = Invoke-Fixture 'overrides' @('--render-scale', '1', '--frame-rate', '60')
     $observed = Read-Observation
-    Assert-True ($observed.frameRate -eq '60' -and $observed.renderScale -eq 1) 'handheld overrides reach helper'
+    Assert-True ($observed.frameRatePassed -and $observed.frameRate -eq '60' -and $observed.renderScalePassed -and $observed.renderScale -eq 1) 'handheld overrides reach helper'
+    Assert-True ($result.frameRate -eq '60' -and $result.renderScale -eq 1) 'handheld overrides appear in the report'
+
+    # The former built-in defaults, now only when asked for explicitly.
+    Set-Fixture
+    $result = Invoke-Fixture 'explicit-unlimited-2x' @('--frame-rate', 'unlimited', '--render-scale', '2')
+    $observed = Read-Observation
+    Assert-True ($observed.frameRatePassed -and $observed.frameRate -eq 'unlimited' -and $observed.renderScalePassed -and $observed.renderScale -eq 2) 'explicit unlimited and 2x still reach helper'
+    Assert-True ($result.frameRate -eq 'unlimited' -and $result.renderScale -eq 2) 'explicit unlimited and 2x appear in the report'
+
+    foreach ($rate in @('original', '60', '120', '144', '165', '200', '240', 'unlimited')) {
+        Set-Fixture
+        $result = Invoke-Fixture ('frame-rate-' + $rate) @('--frame-rate', $rate)
+        $observed = Read-Observation
+        Assert-True ($observed.frameRatePassed -and $observed.frameRate -eq $rate -and $result.frameRate -eq $rate) "frame rate $rate reaches helper"
+        Assert-True (-not $observed.renderScalePassed -and $null -eq $result.renderScale) "frame rate $rate alone leaves render scale to saved settings"
+    }
+
+    foreach ($scale in @(1, 2, 3, 4)) {
+        Set-Fixture
+        $result = Invoke-Fixture ('render-scale-' + $scale) @('--render-scale', [string]$scale)
+        $observed = Read-Observation
+        Assert-True ($observed.renderScalePassed -and $observed.renderScale -eq $scale -and $result.renderScale -eq $scale) "render scale $scale reaches helper"
+        Assert-True (-not $observed.frameRatePassed -and $result.frameRate -eq '') "render scale $scale alone leaves frame rate to saved settings"
+    }
+
+    foreach ($limit in @('auto', '57', 'off')) {
+        Set-Fixture
+        $result = Invoke-Fixture ('frame-limit-' + $limit) @('--frame-limit', $limit)
+        $observed = Read-Observation
+        Assert-True ($observed.frameLimitPassed -and $observed.frameLimit -eq $limit -and $result.frameLimit -eq $limit) "frame limit $limit reaches helper"
+    }
+
+    foreach ($mode in @('on', 'off', 'restore')) {
+        Set-Fixture
+        $result = Invoke-Fixture ('nvidia-max-performance-' + $mode) @('--nvidia-max-performance', $mode)
+        $observed = Read-Observation
+        Assert-True ($observed.nvidiaMaxPerformancePassed -and $observed.nvidiaMaxPerformance -eq $mode -and $result.nvidiaMaxPerformance -eq $mode) "NVIDIA max performance $mode reaches helper"
+    }
+
+    # Different values in each pair also show the two options are not swapped.
+    foreach ($pair in @(@('1', '8'), @('2.5', '0.5'), @('0.5', '2.5'), @('8', '1'))) {
+        $draw, $lod = $pair
+        Set-Fixture
+        $result = Invoke-Fixture ('distance-' + $draw + '-' + $lod) @('--draw-distance', $draw, '--lod-distance', $lod)
+        $observed = Read-Observation
+        Assert-True ($observed.drawDistanceScalePassed -and $observed.drawDistanceScale -eq $draw -and $result.drawDistanceScale -eq $draw) "draw distance $draw reaches helper"
+        Assert-True ($observed.lodDistanceScalePassed -and $observed.lodDistanceScale -eq $lod -and $result.lodDistanceScale -eq $lod) "LOD distance $lod reaches helper"
+    }
+    Set-Fixture
+    $result = Invoke-Fixture 'draw-distance-only' @('--draw-distance', '2')
+    $observed = Read-Observation
+    Assert-True ($observed.drawDistanceScale -eq '2' -and -not $observed.lodDistanceScalePassed -and $result.lodDistanceScale -eq '') 'draw distance alone leaves LOD distance to saved settings'
+    Set-Fixture
+    $result = Invoke-Fixture 'lod-distance-only' @('--lod-distance', '2')
+    $observed = Read-Observation
+    Assert-True ($observed.lodDistanceScale -eq '2' -and -not $observed.drawDistanceScalePassed -and $result.drawDistanceScale -eq '') 'LOD distance alone leaves draw distance to saved settings'
 
     Set-Fixture -ExitCode 23
     $failure = Invoke-Fixture 'failure' -ExpectedExit 23
@@ -145,7 +217,8 @@ try {
     Set-Fixture -DelayMs 2000
     $null = Invoke-Fixture 'normal-launch-lifetime' -CheckOnly $false -CheckLifetime $true
     $observed = Read-Observation
-    Assert-True (-not $observed.checkOnly -and $observed.renderScale -eq 2 -and $observed.frameRate -eq 'unlimited') 'normal double-click profile reaches harmless helper without CheckOnly'
+    Assert-True (-not $observed.checkOnly -and -not $observed.renderScalePassed -and -not $observed.frameRatePassed) 'normal double-click reaches harmless helper without CheckOnly, frame rate or render scale'
+    Assert-True (@($observed.boundNames).Count -eq 0) 'normal double-click passes no helper options, so saved settings apply'
     Assert-True (Test-Path -LiteralPath (Join-Path $fixture 'completed.txt')) 'normal launcher waits for helper completion'
 
     Set-Fixture
@@ -154,6 +227,35 @@ try {
     Assert-True (-not (Test-Path -LiteralPath (Join-Path $fixture 'observation.json'))) 'invalid arguments do not run helper'
     $invalid = Invoke-Fixture 'invalid-scale' @('--render-scale', '0') -ExpectedExit 1
     Assert-True ($invalid.launcherError.Contains('Render scale must be')) 'rejects invalid render scale'
+    $badIndex = 0
+    foreach ($bad in @('60;exit', '19', '1001', '60.5', 'AUTO')) {
+        $badIndex++
+        $invalid = Invoke-Fixture ('invalid-limit-' + $badIndex) @('--frame-limit', $bad) -ExpectedExit 1
+        Assert-True ($invalid.launcherError.Contains('Frame limit must be')) "rejects frame limit '$bad' without invoking PowerShell"
+    }
+    Assert-True (-not (Test-Path -LiteralPath (Join-Path $fixture 'observation.json'))) 'invalid frame limits do not run helper'
+    $badIndex = 0
+    # '""' passes an empty argument through the launcher command line.
+    foreach ($bad in @('ON', 'max', 'on;exit', '""')) {
+        $badIndex++
+        $invalid = Invoke-Fixture ('invalid-nvidia-' + $badIndex) @('--nvidia-max-performance', $bad) -ExpectedExit 1
+        Assert-True ($invalid.launcherError.Contains('NVIDIA max performance must be')) "rejects NVIDIA max performance '$bad' without invoking PowerShell"
+    }
+    Assert-True (-not (Test-Path -LiteralPath (Join-Path $fixture 'observation.json'))) 'invalid NVIDIA max performance values do not run helper'
+    foreach ($option in @(
+        @{ Name = '--draw-distance'; Slug = 'draw'; Message = 'Draw distance must be' },
+        @{ Name = '--lod-distance'; Slug = 'lod'; Message = 'LOD distance must be' }
+    )) {
+        Set-Fixture
+        $badIndex = 0
+        # '""' passes an empty argument through the launcher command line.
+        foreach ($bad in @('0.4', '9', '2,5', 'abc', '1;exit', '""', '1.2345')) {
+            $badIndex++
+            $invalid = Invoke-Fixture ('invalid-' + $option.Slug + '-distance-' + $badIndex) @($option.Name, $bad) -ExpectedExit 1
+            Assert-True ($invalid.launcherError.Contains($option.Message)) "rejects $($option.Name) '$bad' without invoking PowerShell"
+        }
+        Assert-True (-not (Test-Path -LiteralPath (Join-Path $fixture 'observation.json'))) "invalid $($option.Name) values do not run helper"
+    }
     $invalid = Invoke-Fixture 'unknown-option' @('--arbitrary-command') -ExpectedExit 1
     Assert-True ($invalid.launcherError.Contains('Unknown launcher option')) 'rejects arbitrary forwarded arguments'
 
