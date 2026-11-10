@@ -88,10 +88,15 @@ function Invoke-FixtureChild([string]$Executable, [string]$Arguments, [string]$R
 
 $stub = @'
 [CmdletBinding()]
-param([string]$FrameRate, [int]$RenderScale, [string]$GraphicsTest)
+param([string]$FrameRate, [int]$RenderScale, [string]$GraphicsTest, [string]$RenderTargetPath,
+      [int]$SubmitDrawInterval, [switch]$AsyncSubmission)
 $ErrorActionPreference = 'Stop'
 $received = @{}
-foreach ($name in $PSBoundParameters.Keys) { $received[$name] = $PSBoundParameters[$name] }
+foreach ($name in $PSBoundParameters.Keys) {
+    $value = $PSBoundParameters[$name]
+    if ($value -is [System.Management.Automation.SwitchParameter]) { $value = $value.IsPresent }
+    $received[$name] = $value
+}
 $fileHash = Get-FileHash -LiteralPath $env:SKATE2_LAUNCHER_FIXTURE_HASH_FILE -Algorithm SHA256
 if ($fileHash.Hash -ne $env:SKATE2_LAUNCHER_FIXTURE_EXPECTED_HASH) { throw 'Hash fixture content mismatch.' }
 [ordered]@{
@@ -144,7 +149,8 @@ $wrappers = @(
     @{ Name='Launch Skate 2 - 1x Performance.cmd'; Target='Launch-Skate2.ps1'; Expected=@{ FrameRate='unlimited'; RenderScale=1 } },
     @{ Name='Launch Skate 2 - 2x Quality.cmd'; Target='Launch-Skate2.ps1'; Expected=@{ FrameRate='unlimited'; RenderScale=2 } },
     @{ Name='Launch Skate 2 - 4x Quality.cmd'; Target='Launch-Skate2.ps1'; Expected=@{ FrameRate='unlimited'; RenderScale=4 } },
-    @{ Name='Launch Skate 2 - 60 FPS.cmd'; Target='Launch-Skate2.ps1'; Expected=@{ FrameRate='60'; GraphicsTest='synchronous-shaders' } }
+    @{ Name='Launch Skate 2 - 60 FPS.cmd'; Target='Launch-Skate2.ps1'; Expected=@{ FrameRate='60'; GraphicsTest='synchronous-shaders' } },
+    @{ Name='Launch Skate 2 - RTV Performance.cmd'; Target='Launch-Skate2.ps1'; Expected=@{ FrameRate='unlimited'; RenderScale=2; RenderTargetPath='rtv'; SubmitDrawInterval=1024; AsyncSubmission=$true } }
 )
 $caseNumber = 0
 foreach ($wrapper in $wrappers) {

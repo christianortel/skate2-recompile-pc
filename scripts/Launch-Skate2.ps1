@@ -11,6 +11,14 @@ param(
     [string]$GraphicsTest = 'synchronous-shaders',
     [switch]$PresentIdleCleanSync = $true,
     [ValidateSet(1, 2, 3, 4)][int]$RenderScale,
+    # Render target path. ROV is the default; RTV is faster, especially on
+    # Nvidia GPUs. See docs/PERFORMANCE.md.
+    [ValidateSet('rov', 'rtv')][string]$RenderTargetPath = 'rov',
+    # Hand recorded GPU work to the host GPU every N draws within a frame
+    # (0 = only at frame boundaries).
+    [ValidateRange(0, 65536)][int]$SubmitDrawInterval,
+    # Replay and submit command lists on a separate thread.
+    [switch]$AsyncSubmission,
     [ValidateRange(0, 16)][int]$Monitor,
     [switch]$Windowed,
     [ValidateRange(-2, 32)][int]$Adapter = -1
@@ -59,7 +67,7 @@ try {
     $cacheRoot = Join-Path $appRoot 'cache'
     $arguments = @(
         "--game_data_root=$gameRoot", "--user_data_root=$userRoot", "--cache_root=$cacheRoot",
-        '--gpu_plugin=xenos', '--input_backend=sdl', '--render_target_path_d3d12=rov'
+        '--gpu_plugin=xenos', '--input_backend=sdl', "--render_target_path_d3d12=$RenderTargetPath"
     )
     if ($KeyboardTest) { $arguments += '--mnk_mode=true' }
     if ($InputDiagnostics) { $arguments += '--input_diag=true' }
@@ -74,6 +82,8 @@ try {
     if ($PSBoundParameters.ContainsKey('RenderScale')) {
         $arguments += @('--resolution_scale=1', "--draw_resolution_scale_x=$RenderScale", "--draw_resolution_scale_y=$RenderScale")
     }
+    if ($PSBoundParameters.ContainsKey('SubmitDrawInterval')) { $arguments += "--d3d12_submit_draw_interval=$SubmitDrawInterval" }
+    if ($AsyncSubmission) { $arguments += '--d3d12_async_submission=true' }
     if ($PSBoundParameters.ContainsKey('Monitor')) { $arguments += "--monitor=$Monitor" }
     if ($Windowed) { $arguments += '--fullscreen=false' }
     if ($PerformanceCapture) {

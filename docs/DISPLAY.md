@@ -11,12 +11,13 @@ Use **Launch Skate 2.exe** in the player-package root for the default profile. T
 | **Launch Skate 2 - 1x Performance.cmd** | 1× | Unlimited; lower GPU load |
 | **Launch Skate 2 - 4x Quality.cmd** | 4× | Unlimited; experimental |
 | **Launch Skate 2 - 60 FPS.cmd** | Saved/default quality | Paced 60 FPS target |
+| **Launch Skate 2 - RTV Performance.cmd** | 2× | Unlimited; RTV path with mid-frame and threaded submission. See [Performance notes](PERFORMANCE.md) |
 
 **Launch Skate 2 - 2x Quality.cmd** and **Launch Skate 2 - Unlocked FPS.cmd** select the same profile as the default launcher. All supplied profiles enable synchronous shader compilation and GPU idle-clean synchronization. Directly opening `skate2.exe` does not apply a launcher profile.
 
 The native EXE runs the existing PowerShell startup logic. v0.1.1 changes the entrypoint and packaging while preserving the v0.1.0 game/runtime binaries and graphics fixes.
 
-Actual frame rate depends on hardware and workload. If performance or visuals regress, restart with the 1× Performance launcher. Leave the runtime's **VSync** setting enabled: it also controls guest timing.
+Actual frame rate depends on hardware and workload. If performance or visuals regress, restart with the 1× Performance launcher. [Performance notes](PERFORMANCE.md) describe the RTV profile, the related runtime settings, and measurements. Leave the runtime's **VSync** setting enabled: it also controls guest timing.
 
 ## Performance troubleshooting
 

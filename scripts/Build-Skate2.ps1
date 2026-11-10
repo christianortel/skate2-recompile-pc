@@ -77,7 +77,7 @@ try {
             if ($LASTEXITCODE -ne 0 -or $sdkCommit -ne 'f5337cdc947ff6d4c4196737e2c807a48f2a1fc2') {
                 throw 'SDK source revision differs from the pinned, audited version.'
             }
-            foreach ($patchName in @('rexglue-0.10.0-windows-build.patch', 'rexglue-0.10.0-float16-pack.patch', 'rexglue-0.10.0-input-diagnostics.patch', 'rexglue-0.10.0-input-synchronization.patch', 'rexglue-0.10.0-audio-output.patch', 'rexglue-0.10.0-cvar-toml-escaping.patch', 'rexglue-0.10.0-release-perf-counters.patch', 'rexglue-0.10.0-live-frame-capture.patch', 'rexglue-0.10.0-cvar-validator.patch', 'rexglue-0.10.0-vertex-buffer-coherency.patch', 'rexglue-0.10.0-present-idleclean-diagnostic.patch')) {
+            foreach ($patchName in @('rexglue-0.10.0-windows-build.patch', 'rexglue-0.10.0-float16-pack.patch', 'rexglue-0.10.0-input-diagnostics.patch', 'rexglue-0.10.0-input-synchronization.patch', 'rexglue-0.10.0-audio-output.patch', 'rexglue-0.10.0-cvar-toml-escaping.patch', 'rexglue-0.10.0-release-perf-counters.patch', 'rexglue-0.10.0-live-frame-capture.patch', 'rexglue-0.10.0-cvar-validator.patch', 'rexglue-0.10.0-vertex-buffer-coherency.patch', 'rexglue-0.10.0-present-idleclean-diagnostic.patch', 'rexglue-0.10.0-idle-ui-repaint.patch', 'rexglue-0.10.0-unclipped-draw-extent.patch', 'rexglue-0.10.0-command-processor-overhead.patch', 'rexglue-0.10.0-d3d12-submission-and-queries.patch', 'rexglue-0.10.0-placed-textures.patch')) {
                 $sdkPatch = Join-Path $workspace "patches\$patchName"
                 $previousPreference = $ErrorActionPreference
                 try {

@@ -1,0 +1,206 @@
+diff --git a/include/rex/graphics/d3d12/texture_cache.h b/include/rex/graphics/d3d12/texture_cache.h
+index 4d845c7..0c899a4 100644
+--- a/include/rex/graphics/d3d12/texture_cache.h
++++ b/include/rex/graphics/d3d12/texture_cache.h
+@@ -12,6 +12,7 @@
+ #pragma once
+ 
+ #include <array>
++#include <map>
+ #include <functional>
+ #include <memory>
+ #include <unordered_map>
+@@ -223,6 +224,14 @@ class D3D12TextureCache final : public TextureCache {
+     uint32_t swizzle;
+   };
+ 
++  // A range of a shared heap in which a texture is placed (see
++  // AllocateTextureHeapBlock).
++  struct TextureHeapBlock {
++    uint32_t heap_index = UINT32_MAX;
++    uint64_t offset = 0;
++    uint64_t size = 0;
++  };
++
+   class D3D12Texture final : public Texture {
+    public:
+     union SRVDescriptorKey {
+@@ -268,7 +277,11 @@ class D3D12TextureCache final : public TextureCache {
+       srv_descriptors_.emplace(descriptor_key, descriptor_index);
+     }
+ 
++    void SetHeapBlock(const TextureHeapBlock& heap_block) { heap_block_ = heap_block; }
++
+    private:
++    // Returned to the texture cache's heaps on destruction if valid.
++    TextureHeapBlock heap_block_;
+     Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
+     D3D12_RESOURCE_STATES resource_state_;
+     std::unique_ptr<D3D12Texture> texture_3d_as_2d_;
+@@ -527,6 +540,21 @@ class D3D12TextureCache final : public TextureCache {
+                 "two 2 GB buffers");
+   // Resident portions of the tiled buffer.
+   std::vector<Microsoft::WRL::ComPtr<ID3D12Heap>> scaled_resolve_heaps_;
++
++  // Textures are placed in shared heaps rather than created as committed
++  // resources, since creating a committed resource is an expensive operating
++  // system memory allocation, and areas of the game may need hundreds of new
++  // textures in one frame. Textures are only destroyed after the GPU has
++  // completed their last usage, so their ranges can be reused right away.
++  static constexpr uint64_t kTextureHeapSize = UINT64_C(64) << 20;
++  struct TextureHeap {
++    Microsoft::WRL::ComPtr<ID3D12Heap> heap;
++    // Free ranges, offset -> size.
++    std::map<uint64_t, uint64_t> free_ranges;
++  };
++  std::vector<TextureHeap> texture_heaps_;
++  bool AllocateTextureHeapBlock(uint64_t size, uint64_t alignment, TextureHeapBlock& block_out);
++  void FreeTextureHeapBlock(const TextureHeapBlock& block);
+   // Number of currently resident portions of the tiled buffer, for profiling.
+   uint32_t scaled_resolve_heap_count_ = 0;
+   // Current scaled resolve state.
+diff --git a/src/graphics/d3d12/texture_cache.cpp b/src/graphics/d3d12/texture_cache.cpp
+index 2be0e8e..d9da85e 100644
+--- a/src/graphics/d3d12/texture_cache.cpp
++++ b/src/graphics/d3d12/texture_cache.cpp
+@@ -10,6 +10,7 @@
+  */
+ 
+ #include <algorithm>
++#include <iterator>
+ #include <array>
+ #include <cfloat>
+ #include <cstddef>
+@@ -26,12 +27,19 @@
+ #include <rex/graphics/pipeline/texture/info.h>
+ #include <rex/graphics/pipeline/texture/util.h>
+ #include <rex/graphics/xenos.h>
++#include <rex/cvar.h>
+ #include <rex/logging.h>
+ #include <rex/perf/counter.h>
+ #include <rex/math.h>
+ #include <rex/ui/d3d12/d3d12_upload_buffer_pool.h>
+ #include <rex/ui/d3d12/d3d12_util.h>
+ 
++REXCVAR_DEFINE_BOOL(d3d12_texture_placed_resources, true, "GPU/D3D12",
++                    "Place textures in shared heaps instead of creating each one as a "
++                    "separate committed resource, which is much cheaper when many new "
++                    "textures are needed at once.")
++    .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
++
+ namespace rex::graphics::d3d12 {
+ 
+ // Generated with `xb buildshaders`.
+@@ -1427,6 +1435,85 @@ D3D12TextureCache::D3D12Texture::~D3D12Texture() {
+   for (const auto& descriptor_pair : srv_descriptors_) {
+     d3d12_texture_cache.ReleaseTextureDescriptor(descriptor_pair.second);
+   }
++  if (heap_block_.heap_index != UINT32_MAX) {
++    // The texture cache only destroys textures whose last usage on the GPU has
++    // completed, so the range can be reused immediately.
++    d3d12_texture_cache.FreeTextureHeapBlock(heap_block_);
++  }
++}
++
++bool D3D12TextureCache::AllocateTextureHeapBlock(uint64_t size, uint64_t alignment,
++                                                 TextureHeapBlock& block_out) {
++  if (!size || size > kTextureHeapSize) {
++    return false;
++  }
++  alignment = std::max(alignment, uint64_t(D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT));
++  auto try_heap = [&](uint32_t heap_index) -> bool {
++    std::map<uint64_t, uint64_t>& free_ranges = texture_heaps_[heap_index].free_ranges;
++    for (auto it = free_ranges.begin(); it != free_ranges.end(); ++it) {
++      uint64_t range_start = it->first;
++      uint64_t range_end = it->first + it->second;
++      uint64_t block_start = (range_start + alignment - 1) & ~(alignment - 1);
++      if (block_start + size > range_end) {
++        continue;
++      }
++      free_ranges.erase(it);
++      if (block_start > range_start) {
++        free_ranges.emplace(range_start, block_start - range_start);
++      }
++      if (block_start + size < range_end) {
++        free_ranges.emplace(block_start + size, range_end - (block_start + size));
++      }
++      block_out.heap_index = heap_index;
++      block_out.offset = block_start;
++      block_out.size = size;
++      return true;
++    }
++    return false;
++  };
++  for (uint32_t i = 0; i < uint32_t(texture_heaps_.size()); ++i) {
++    if (try_heap(i)) {
++      return true;
++    }
++  }
++  const ui::d3d12::D3D12Provider& provider = command_processor_.GetD3D12Provider();
++  D3D12_HEAP_DESC heap_desc = {};
++  heap_desc.SizeInBytes = kTextureHeapSize;
++  heap_desc.Properties = ui::d3d12::util::kHeapPropertiesDefault;
++  heap_desc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
++  heap_desc.Flags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES |
++                    provider.GetHeapFlagCreateNotZeroed();
++  TextureHeap texture_heap;
++  if (FAILED(provider.GetDevice()->CreateHeap(&heap_desc, IID_PPV_ARGS(&texture_heap.heap)))) {
++    return false;
++  }
++  texture_heap.free_ranges.emplace(0, kTextureHeapSize);
++  texture_heaps_.push_back(std::move(texture_heap));
++  return try_heap(uint32_t(texture_heaps_.size() - 1));
++}
++
++void D3D12TextureCache::FreeTextureHeapBlock(const TextureHeapBlock& block) {
++  if (block.heap_index >= texture_heaps_.size() || !block.size) {
++    return;
++  }
++  std::map<uint64_t, uint64_t>& free_ranges = texture_heaps_[block.heap_index].free_ranges;
++  uint64_t start = block.offset;
++  uint64_t end = block.offset + block.size;
++  // Merge with the following free range.
++  auto next = free_ranges.lower_bound(start);
++  if (next != free_ranges.end() && next->first == end) {
++    end += next->second;
++    next = free_ranges.erase(next);
++  }
++  // Merge with the preceding free range.
++  if (next != free_ranges.begin()) {
++    auto previous = std::prev(next);
++    if (previous->first + previous->second == start) {
++      start = previous->first;
++      free_ranges.erase(previous);
++    }
++  }
++  free_ranges.emplace(start, end - start);
+ }
+ 
+ bool D3D12TextureCache::IsDecompressionNeeded(xenos::TextureFormat format, uint32_t width,
+@@ -1549,6 +1636,26 @@ std::unique_ptr<TextureCache::Texture> D3D12TextureCache::CreateTexture(TextureK
+   // Assuming untiling will be the next operation.
+   D3D12_RESOURCE_STATES resource_state = D3D12_RESOURCE_STATE_COPY_DEST;
+   Microsoft::WRL::ComPtr<ID3D12Resource> resource;
++  if (REXCVAR_GET(d3d12_texture_placed_resources)) {
++    D3D12_RESOURCE_ALLOCATION_INFO allocation_info = device->GetResourceAllocationInfo(0, 1, &desc);
++    TextureHeapBlock heap_block;
++    // Large textures are rare and would fragment the heaps - keep them
++    // committed.
++    if (allocation_info.SizeInBytes != UINT64_MAX &&
++        allocation_info.SizeInBytes <= kTextureHeapSize / 4 &&
++        AllocateTextureHeapBlock(allocation_info.SizeInBytes, allocation_info.Alignment,
++                                 heap_block)) {
++      if (SUCCEEDED(device->CreatePlacedResource(texture_heaps_[heap_block.heap_index].heap.Get(),
++                                                 heap_block.offset, &desc, resource_state, nullptr,
++                                                 IID_PPV_ARGS(&resource)))) {
++        auto texture =
++            std::make_unique<D3D12Texture>(*this, key, resource.Get(), resource_state);
++        texture->SetHeapBlock(heap_block);
++        return texture;
++      }
++      FreeTextureHeapBlock(heap_block);
++    }
++  }
+   if (FAILED(device->CreateCommittedResource(&ui::d3d12::util::kHeapPropertiesDefault,
+                                              provider.GetHeapFlagCreateNotZeroed(), &desc,
+                                              resource_state, nullptr, IID_PPV_ARGS(&resource)))) {

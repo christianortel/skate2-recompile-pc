@@ -75,7 +75,7 @@ foreach ($name in $selected) {
     Write-Host "Collected $name at $commit"
 }
 foreach($relative in @('scripts/Rebuild-Skate2Runtime.ps1','scripts/Test-Skate2RuntimeABI.ps1','tools/Enter-BuildEnvironment.ps1','docs/RUNTIME_REBUILD.md','LICENSE')) { Copy-Ordinary $workspace $relative $relative }
-$patches=@('windows-build','float16-pack','input-diagnostics','input-synchronization','audio-output','cvar-toml-escaping','release-perf-counters','live-frame-capture','cvar-validator','vertex-buffer-coherency','present-idleclean-diagnostic')
+$patches=@('windows-build','float16-pack','input-diagnostics','input-synchronization','audio-output','cvar-toml-escaping','release-perf-counters','live-frame-capture','cvar-validator','vertex-buffer-coherency','present-idleclean-diagnostic','idle-ui-repaint','unclipped-draw-extent','command-processor-overhead','d3d12-submission-and-queries','placed-textures')
 foreach($name in $patches) { $relative="patches/rexglue-0.10.0-$name.patch"; Copy-Ordinary $workspace $relative $relative }
 $noticeIndex = Get-Content -LiteralPath (Join-Path $workspace 'licenses/NOTICE-INDEX.json') -Raw | ConvertFrom-Json
 foreach($notice in $noticeIndex.Files) { Copy-Ordinary $workspace $notice.Path $notice.Path }
