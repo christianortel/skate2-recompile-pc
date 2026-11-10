@@ -1,0 +1,1809 @@
+diff --git a/include/rex/graphics/command_processor.h b/include/rex/graphics/command_processor.h
+index da8e432..beee829 100644
+--- a/include/rex/graphics/command_processor.h
++++ b/include/rex/graphics/command_processor.h
+@@ -23,6 +23,7 @@
+ 
+ #include <rex/graphics/register_file.h>
+ #include <rex/graphics/registers.h>
++#include <rex/graphics/trace_writer.h>
+ #include <rex/graphics/xenos.h>
+ #include <rex/memory.h>
+ #include <rex/memory/ring_buffer.h>
+@@ -129,6 +130,14 @@ class CommandProcessor {
+   bool Save(::rex::stream::ByteStream* stream);
+   bool Restore(::rex::stream::ByteStream* stream);
+ 
++  // Requests a GPU trace of the next trace_gpu_frame_count guest frames,
++  // starting at the next frame boundary. May be called from any thread.
++  void RequestFrameTrace() { trace_frame_requested_.store(true, std::memory_order_relaxed); }
++
++  // For subsystems recording the guest memory they read. Only to be used on
++  // the command processor thread.
++  TraceWriter& trace_writer() { return trace_writer_; }
++
+  protected:
+   struct IndexBufferInfo {
+     xenos::IndexFormat format = xenos::IndexFormat::kInt16;
+@@ -230,11 +239,18 @@ class CommandProcessor {
+   // Shared memexport readback enable state with backend legacy-flag override support.
+   bool IsReadbackMemexportEnabled(bool legacy_backend_flag) const;
+ 
++  // Writes the state needed to replay the trace that has just been opened
++  // (registers, gamma ramps, and in implementations, EDRAM and GPU-written
++  // memory contents).
++  virtual void InitializeTrace();
++
+   memory::Memory* memory_ = nullptr;
+   system::KernelState* kernel_state_ = nullptr;
+   GraphicsSystem* graphics_system_ = nullptr;
+   RegisterFile* register_file_ = nullptr;
+ 
++  TraceWriter trace_writer_;
++
+   std::atomic<bool> worker_running_;
+   system::object_ref<system::XHostThread> worker_thread_;
+ 
+@@ -278,9 +294,26 @@ class CommandProcessor {
+   const char* legacy_readback_memexport_cvar_name_ = nullptr;
+ 
+  private:
++  // ExecutePacket while a trace is being recorded.
++  bool ExecutePacketTraced(memory::RingBuffer* reader);
++  // Called after an executed swap packet has been recorded.
++  void OnTracedSwap();
++  void BeginTrace(bool stream);
++  void EndTrace();
++
+   reg::DC_LUT_30_COLOR gamma_ramp_256_entry_table_[256] = {};
+   reg::DC_LUT_PWL_DATA gamma_ramp_pwl_rgb_[128][3] = {};
+   uint32_t gamma_ramp_rw_component_ = 0;
++
++  // GPU trace state. Only accessed on the command processor thread, except for
++  // trace_frame_requested_.
++  std::atomic<bool> trace_frame_requested_{false};
++  bool trace_stream_pending_ = false;
++  bool trace_streaming_ = false;
++  uint32_t trace_frames_remaining_ = 0;
++  uint32_t trace_frames_recorded_ = 0;
++  // Executed swaps (guest frames), unlike counter_ not affected by vblanks.
++  uint32_t trace_swap_count_ = 0;
+ };
+ 
+ }  // namespace rex::graphics
+diff --git a/include/rex/graphics/d3d12/command_processor.h b/include/rex/graphics/d3d12/command_processor.h
+index 2b55cdb..2ec85a2 100644
+--- a/include/rex/graphics/d3d12/command_processor.h
++++ b/include/rex/graphics/d3d12/command_processor.h
+@@ -223,6 +223,8 @@ class D3D12CommandProcessor : public CommandProcessor {
+                  IndexBufferInfo* index_buffer_info, bool major_mode_explicit) override;
+   bool IssueCopy() override;
+ 
++  void InitializeTrace() override;
++
+  private:
+   static constexpr uint32_t kQueueFrames = 3;
+ 
+diff --git a/include/rex/graphics/d3d12/render_target_cache.h b/include/rex/graphics/d3d12/render_target_cache.h
+index cd7693a..9e8b3dd 100644
+--- a/include/rex/graphics/d3d12/render_target_cache.h
++++ b/include/rex/graphics/d3d12/render_target_cache.h
+@@ -79,6 +79,13 @@ class D3D12RenderTargetCache final : public RenderTargetCache {
+                D3D12TextureCache& texture_cache, uint32_t& written_address_out,
+                uint32_t& written_length_out);
+ 
++  // For starting a GPU trace. Submits copying of the EDRAM contents to a
++  // readback buffer, returns true if anything was submitted. The submission
++  // must then be awaited before calling InitializeTraceCompleteDownloads,
++  // which writes the snapshot to the trace.
++  bool InitializeTraceSubmitDownloads();
++  void InitializeTraceCompleteDownloads();
++
+   // For host render targets.
+ 
+   bool gamma_render_target_as_unorm16() const { return gamma_render_target_as_unorm16_; }
+@@ -173,6 +180,9 @@ class D3D12RenderTargetCache final : public RenderTargetCache {
+   ID3D12DescriptorHeap* edram_buffer_descriptor_heap_ = nullptr;
+   D3D12_CPU_DESCRIPTOR_HANDLE edram_buffer_descriptor_heap_start_;
+ 
++  // EDRAM snapshot download for GPU traces.
++  ID3D12Resource* edram_snapshot_download_buffer_ = nullptr;
++
+   // Resolve copying root signature and pipelines.
+   // Parameter 0 - draw_util::ResolveCopyShaderConstants or its ::DestRelative.
+   // Parameter 1 - destination (shared memory or a part of it).
+diff --git a/include/rex/graphics/d3d12/shared_memory.h b/include/rex/graphics/d3d12/shared_memory.h
+index 5100818..8419174 100644
+--- a/include/rex/graphics/d3d12/shared_memory.h
++++ b/include/rex/graphics/d3d12/shared_memory.h
+@@ -75,6 +75,13 @@ class D3D12SharedMemory : public SharedMemory {
+   void WriteUintPow2UAVDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE handle,
+                                   uint32_t element_size_bytes_pow2);
+ 
++  // For starting a GPU trace. Submits copying of the GPU-written memory to a
++  // readback buffer, returns true if anything was submitted. The submission
++  // must then be awaited before calling InitializeTraceCompleteDownloads,
++  // which writes the data to the trace.
++  bool InitializeTraceSubmitDownloads();
++  void InitializeTraceCompleteDownloads();
++
+  protected:
+   bool AllocateSparseHostGpuMemoryRange(uint32_t offset_allocations,
+                                         uint32_t length_allocations) override;
+@@ -110,6 +117,10 @@ class D3D12SharedMemory : public SharedMemory {
+   D3D12_CPU_DESCRIPTOR_HANDLE buffer_descriptor_heap_start_;
+ 
+   std::unique_ptr<ui::d3d12::D3D12UploadBufferPool> upload_buffer_pool_;
++
++  // GPU-written memory download for GPU traces.
++  ID3D12Resource* trace_download_buffer_ = nullptr;
++  void ResetTraceDownload();
+ };
+ 
+ }  // namespace rex::graphics::d3d12
+diff --git a/include/rex/graphics/pipeline/render_target/cache.h b/include/rex/graphics/pipeline/render_target/cache.h
+index 3bbd52e..eb84d17 100644
+--- a/include/rex/graphics/pipeline/render_target/cache.h
++++ b/include/rex/graphics/pipeline/render_target/cache.h
+@@ -180,6 +180,12 @@ class RenderTargetCache {
+   // each.
+   uint32_t GetLastUpdateBoundRenderTargets(uint32_t* depth_and_color_formats_out = nullptr) const;
+ 
++  // Records the guest memory read on the CPU for draw extent estimation if not
++  // null.
++  void SetTraceWriter(TraceWriter* trace_writer) {
++    draw_extent_estimator_.SetTraceWriter(trace_writer);
++  }
++
+  protected:
+   RenderTargetCache(const RegisterFile& register_file, const memory::Memory& memory,
+                     uint32_t draw_resolution_scale_x, uint32_t draw_resolution_scale_y)
+diff --git a/include/rex/graphics/pipeline/shader/interpreter.h b/include/rex/graphics/pipeline/shader/interpreter.h
+index 3e4fe7c..85ac6ae 100644
+--- a/include/rex/graphics/pipeline/shader/interpreter.h
++++ b/include/rex/graphics/pipeline/shader/interpreter.h
+@@ -24,11 +24,16 @@
+ 
+ namespace rex::graphics {
+ 
++class TraceWriter;
++
+ class ShaderInterpreter {
+  public:
+   ShaderInterpreter(const RegisterFile& register_file, const memory::Memory& memory)
+       : register_file_(register_file), memory_(memory) {}
+ 
++  // Records the guest memory read by vertex fetches if not null.
++  void SetTraceWriter(TraceWriter* new_trace_writer) { trace_writer_ = new_trace_writer; }
++
+   class ExportSink {
+    public:
+     virtual ~ExportSink() = default;
+@@ -123,6 +128,8 @@ class ShaderInterpreter {
+ 
+   ExportSink* export_sink_ = nullptr;
+ 
++  TraceWriter* trace_writer_ = nullptr;
++
+   xenos::ShaderType shader_type_ = xenos::ShaderType::kVertex;
+   const uint32_t* ucode_ = nullptr;
+ 
+diff --git a/include/rex/graphics/primitive_processor.h b/include/rex/graphics/primitive_processor.h
+index 2945731..35cd542 100644
+--- a/include/rex/graphics/primitive_processor.h
++++ b/include/rex/graphics/primitive_processor.h
+@@ -53,6 +53,8 @@ REXCVAR_DECLARE(bool, ignore_32bit_vertex_index_support);
+ 
+ namespace rex::graphics {
+ 
++class TraceWriter;
++
+ // Normalizes primitive data in various ways for use with Direct3D 12 and Vulkan
+ // (down to its minimum requirements plus the portability subset).
+ //
+@@ -173,6 +175,9 @@ class PrimitiveProcessor {
+   std::pair<uint32_t, uint32_t> MemoryInvalidationCallback(uint32_t physical_address_start,
+                                                            uint32_t length, bool exact_range);
+ 
++  // Records the guest index buffers read on the CPU if not null.
++  void SetTraceWriter(TraceWriter* trace_writer) { trace_writer_ = trace_writer; }
++
+  protected:
+   // For host-side index buffer creation, the biggest possibly needed contiguous
+   // allocation, in indices.
+@@ -626,6 +631,7 @@ class PrimitiveProcessor {
+   const RegisterFile& register_file_;
+   memory::Memory& memory_;
+   SharedMemory& shared_memory_;
++  TraceWriter* trace_writer_ = nullptr;
+ 
+   bool full_32bit_vertex_indices_used_ = false;
+   bool convert_triangle_fans_to_lists_ = false;
+diff --git a/include/rex/graphics/shared_memory.h b/include/rex/graphics/shared_memory.h
+index 4d85a2b..d870bf0 100644
+--- a/include/rex/graphics/shared_memory.h
++++ b/include/rex/graphics/shared_memory.h
+@@ -140,6 +140,22 @@ class SharedMemory {
+   virtual bool UploadRanges(
+       const std::vector<std::pair<uint32_t, uint32_t>>& upload_page_ranges) = 0;
+ 
++  // <Start address, length> in bytes.
++  const std::vector<std::pair<uint32_t, uint32_t>>& trace_download_ranges() const {
++    return trace_download_ranges_;
++  }
++  uint32_t trace_download_page_count() const { return trace_download_page_count_; }
++  // For starting a GPU trace. Fills trace_download_ranges() and
++  // trace_download_page_count() with GPU-written ranges that need to be
++  // downloaded, and invalidates the ranges not written by the GPU (firing
++  // watches for them), so the data used from then on is uploaded again and
++  // recorded, rather than all the collected data being written to the trace.
++  // trace_download_page_count() is 0 if there's nothing to download.
++  void PrepareForTraceDownload();
++  // Releases memory used for trace download ranges, to be called after
++  // downloading or when the download is dropped.
++  void ReleaseTraceDownloadRanges();
++
+  private:
+   memory::Memory& memory_;
+ 
+@@ -161,6 +177,10 @@ class SharedMemory {
+   // persistently allocated vector).
+   std::vector<std::pair<uint32_t, uint32_t>> upload_ranges_;
+ 
++  // GPU-written memory downloading for traces. <Start address, length>.
++  std::vector<std::pair<uint32_t, uint32_t>> trace_download_ranges_;
++  uint32_t trace_download_page_count_ = 0;
++
+   // Mutex between the guest memory subsystem and the command processor, to be
+   // locked when checking or updating validity of pages/ranges and when firing
+   // watches.
+diff --git a/include/rex/graphics/trace_protocol.h b/include/rex/graphics/trace_protocol.h
+new file mode 100644
+index 0000000..c200d0c
+--- /dev/null
++++ b/include/rex/graphics/trace_protocol.h
+@@ -0,0 +1,173 @@
++/**
++ ******************************************************************************
++ * Xenia : Xbox 360 Emulator Research Project                                 *
++ ******************************************************************************
++ * Copyright 2020 Ben Vanik. All rights reserved.                             *
++ * Released under the BSD license - see LICENSE in the root for more details. *
++ ******************************************************************************
++ *
++ * @modified    Tom Clay, 2026 - Adapted for ReXGlue runtime
++ */
++
++#pragma once
++
++#include <cstdint>
++
++namespace rex::graphics {
++
++// Trace file extension.
++static const char kTraceExtension[] = "xtr";
++
++// Any byte changes to the files should bump this version.
++// Only builds with matching versions will work.
++// Other changes besides the file format may require bumps, such as
++// anything that changes what is recorded into the files (new GPU
++// command processor commands, etc).
++constexpr uint32_t kTraceFormatVersion = 1;
++
++// Trace file header identifying information about the trace.
++// This must be positioned at the start of the file and must only occur once.
++struct TraceHeader {
++  // Must be the first 4 bytes of the file.
++  // Set to kTraceFormatVersion.
++  uint32_t version;
++
++  // SHA1 of the commit used to record the trace.
++  char build_commit_sha[40];
++
++  // Title ID of game that was being recorded.
++  // May be 0 if not generated from a game or the ID could not be retrieved.
++  uint32_t title_id;
++};
++
++// Tags each command in the trace file stream as one of the *Command types.
++// Each command has this value as its first dword.
++enum class TraceCommandType : uint32_t {
++  kPrimaryBufferStart,
++  kPrimaryBufferEnd,
++  kIndirectBufferStart,
++  kIndirectBufferEnd,
++  kPacketStart,
++  kPacketEnd,
++  kMemoryRead,
++  kMemoryWrite,
++  kEdramSnapshot,
++  kEvent,
++  kRegisters,
++  kGammaRamp,
++};
++
++struct PrimaryBufferStartCommand {
++  TraceCommandType type;
++  uint32_t base_ptr;
++  uint32_t count;
++};
++
++struct PrimaryBufferEndCommand {
++  TraceCommandType type;
++};
++
++struct IndirectBufferStartCommand {
++  TraceCommandType type;
++  uint32_t base_ptr;
++  uint32_t count;
++};
++
++struct IndirectBufferEndCommand {
++  TraceCommandType type;
++};
++
++struct PacketStartCommand {
++  TraceCommandType type;
++  uint32_t base_ptr;
++  uint32_t count;
++};
++
++struct PacketEndCommand {
++  TraceCommandType type;
++};
++
++// The compression format used for memory read/write buffers.
++// Note that not every memory read/write will have compressed data
++// (as it's silly to compress 4 byte buffers).
++enum class MemoryEncodingFormat {
++  // Data is in its raw form. encoded_length == decoded_length.
++  kNone,
++  // Data is compressed with third_party/snappy.
++  kSnappy,
++};
++
++// Represents the GPU reading or writing data from or to memory.
++// Used for both TraceCommandType::kMemoryRead and kMemoryWrite.
++struct MemoryCommand {
++  TraceCommandType type;
++
++  // Base physical memory pointer this read starts at.
++  uint32_t base_ptr;
++  // Encoding format of the data in the trace file.
++  MemoryEncodingFormat encoding_format;
++  // Number of bytes the data occupies in the trace file in its encoded form.
++  uint32_t encoded_length;
++  // Number of bytes the data occupies in memory after decoding.
++  // Note that if no encoding is used this will equal encoded_length.
++  uint32_t decoded_length;
++};
++
++// Represents a full 10 MB snapshot of EDRAM contents, for trace initialization
++// (since replaying the trace will reconstruct its state at any point later) as
++// a sequence of tiles with row-major samples (2x multisampling as 1x2 samples,
++// 4x as 2x2 samples).
++struct EdramSnapshotCommand {
++  TraceCommandType type;
++  // Encoding format of the data in the trace file.
++  MemoryEncodingFormat encoding_format;
++  // Number of bytes the data occupies in the trace file in its encoded form.
++  uint32_t encoded_length;
++};
++
++// Represents a GPU event of EventCommand::Type.
++struct EventCommand {
++  TraceCommandType type;
++
++  // Identifies the event that occurred.
++  enum class Type {
++    kSwap,
++  };
++  Type event_type;
++};
++
++// Represents a range of registers.
++struct RegistersCommand {
++  TraceCommandType type;
++
++  uint32_t first_register;
++  uint32_t register_count;
++  // Whether to set the registers via WriteRegister, which may have side
++  // effects, rather than by copying them directly to the register file.
++  bool execute_callbacks;
++
++  // Encoding format of the values in the trace file.
++  MemoryEncodingFormat encoding_format;
++  // Number of bytes the values occupy in the trace file in their encoded form.
++  // If no encoding is used, this will be sizeof(uint32_t) * register_count.
++  uint32_t encoded_length;
++};
++
++// Represents a gamma ramp - encoded 256 DC_LUT_30_COLOR values and 128
++// interleaved RGB DC_LUT_PWL_DATA values.
++// Assuming that all other gamma ramp state is saved as plain registers.
++struct GammaRampCommand {
++  TraceCommandType type;
++
++  // The component index (0 = red, 1 = green, 2 = blue) for the next
++  // DC_LUT_SEQ_COLOR or DC_LUT_PWL_DATA read or write.
++  uint8_t rw_component;
++
++  // Encoding format of the ramps in the trace file.
++  MemoryEncodingFormat encoding_format;
++  // Number of bytes the ramps occupy in the trace file in their encoded form.
++  // If no encoding is used, this will be sizeof(uint32_t) * (256 + 3 * 128).
++  uint32_t encoded_length;
++};
++
++}  // namespace rex::graphics
+diff --git a/include/rex/graphics/trace_writer.h b/include/rex/graphics/trace_writer.h
+new file mode 100644
+index 0000000..d79c46c
+--- /dev/null
++++ b/include/rex/graphics/trace_writer.h
+@@ -0,0 +1,118 @@
++/**
++ ******************************************************************************
++ * Xenia : Xbox 360 Emulator Research Project                                 *
++ ******************************************************************************
++ * Copyright 2020 Ben Vanik. All rights reserved.                             *
++ * Released under the BSD license - see LICENSE in the root for more details. *
++ ******************************************************************************
++ *
++ * @modified    Tom Clay, 2026 - Adapted for ReXGlue runtime
++ */
++
++#pragma once
++
++#include <cstddef>
++#include <cstdint>
++#include <cstdio>
++#include <filesystem>
++
++#include <rex/graphics/registers.h>
++#include <rex/graphics/trace_protocol.h>
++
++namespace rex::graphics {
++
++// Records the guest GPU command stream, and the guest memory the GPU reads, to
++// a trace file in the format described in trace_protocol.h. Data is stored
++// uncompressed (MemoryEncodingFormat::kNone).
++//
++// Every Write* function does nothing while no file is open. The frequently
++// called ones are inline and only test the file pointer in that case, so they
++// may be called unconditionally from per-packet and per-draw code.
++class TraceWriter {
++ public:
++  explicit TraceWriter(uint8_t* membase);
++  ~TraceWriter();
++  TraceWriter(const TraceWriter&) = delete;
++  TraceWriter& operator=(const TraceWriter&) = delete;
++
++  bool is_open() const { return file_ != nullptr; }
++  // Path of the currently or most recently opened file.
++  const std::filesystem::path& path() const { return path_; }
++
++  // Creates the file (and its parent directories) and writes the header.
++  bool Open(const std::filesystem::path& path, uint32_t title_id);
++  void Flush();
++  // Returns false if writing the trace failed at any point.
++  bool Close();
++
++  void WritePrimaryBufferStart(uint32_t base_ptr) {
++    if (file_) [[unlikely]] {
++      WriteBufferStartCommand(TraceCommandType::kPrimaryBufferStart, base_ptr);
++    }
++  }
++  void WritePrimaryBufferEnd() {
++    if (file_) [[unlikely]] {
++      WriteTypeOnlyCommand(TraceCommandType::kPrimaryBufferEnd);
++    }
++  }
++  void WriteIndirectBufferStart(uint32_t base_ptr) {
++    if (file_) [[unlikely]] {
++      WriteBufferStartCommand(TraceCommandType::kIndirectBufferStart, base_ptr);
++    }
++  }
++  void WriteIndirectBufferEnd() {
++    if (file_) [[unlikely]] {
++      WriteTypeOnlyCommand(TraceCommandType::kIndirectBufferEnd);
++    }
++  }
++  // Records a packet of dword_count dwords located at byte offset within a ring
++  // buffer of ring_capacity bytes, wrapping around the end of the ring if
++  // needed. base_ptr is the guest physical address of the first dword.
++  void WritePacketStart(uint32_t base_ptr, const uint8_t* ring, uint32_t ring_capacity,
++                        uint32_t offset, uint32_t dword_count) {
++    if (file_) [[unlikely]] {
++      WritePacketStartCommand(base_ptr, ring, ring_capacity, offset, dword_count);
++    }
++  }
++  void WritePacketEnd() {
++    if (file_) [[unlikely]] {
++      WriteTypeOnlyCommand(TraceCommandType::kPacketEnd);
++    }
++  }
++  // base_ptr is a guest physical address. If host_ptr is null, the data is
++  // taken from guest physical memory at base_ptr.
++  void WriteMemoryRead(uint32_t base_ptr, size_t length, const void* host_ptr = nullptr) {
++    if (file_) [[unlikely]] {
++      WriteMemoryCommand(TraceCommandType::kMemoryRead, base_ptr, length, host_ptr);
++    }
++  }
++  void WriteMemoryWrite(uint32_t base_ptr, size_t length, const void* host_ptr = nullptr) {
++    if (file_) [[unlikely]] {
++      WriteMemoryCommand(TraceCommandType::kMemoryWrite, base_ptr, length, host_ptr);
++    }
++  }
++
++  // Infrequent commands.
++  void WriteEdramSnapshot(const void* snapshot);
++  void WriteEvent(EventCommand::Type event_type);
++  void WriteRegisters(uint32_t first_register, const uint32_t* register_values,
++                      uint32_t register_count, bool execute_callbacks_on_play);
++  void WriteGammaRamp(const reg::DC_LUT_30_COLOR* gamma_ramp_256_entry_table,
++                      const reg::DC_LUT_PWL_DATA* gamma_ramp_pwl_rgb,
++                      uint32_t gamma_ramp_rw_component);
++
++ private:
++  void Write(const void* data, size_t size);
++  void WriteTypeOnlyCommand(TraceCommandType type);
++  void WriteBufferStartCommand(TraceCommandType type, uint32_t base_ptr);
++  void WritePacketStartCommand(uint32_t base_ptr, const uint8_t* ring, uint32_t ring_capacity,
++                               uint32_t offset, uint32_t dword_count);
++  void WriteMemoryCommand(TraceCommandType type, uint32_t base_ptr, size_t length,
++                          const void* host_ptr);
++
++  uint8_t* membase_;
++  FILE* file_ = nullptr;
++  std::filesystem::path path_;
++};
++
++}  // namespace rex::graphics
+diff --git a/include/rex/graphics/util/draw.h b/include/rex/graphics/util/draw.h
+index 3da182d..e6eea56 100644
+--- a/include/rex/graphics/util/draw.h
++++ b/include/rex/graphics/util/draw.h
+@@ -22,6 +22,10 @@
+ #include <rex/graphics/xenos.h>
+ #include <rex/memory.h>
+ 
++namespace rex::graphics {
++class TraceWriter;
++}  // namespace rex::graphics
++
+ namespace rex::graphics::draw_util {
+ 
+ constexpr bool IsPrimitiveLine(bool vgt_output_path_is_tessellation_enable,
+@@ -580,10 +584,12 @@ struct ResolveInfo {
+ // invalid. fixed_rg[ba]16_truncated_to_minus_1_to_1 is false if 16_16[_16_16]
+ // color render target formats are properly emulated as -32...32, true if
+ // emulated as snorm, with range limited to -1...1, but with correct blending
+-// within that range.
++// within that range. If trace_writer is not null, the guest memory read on the
++// CPU is recorded to it.
+ bool GetResolveInfo(const RegisterFile& regs, const memory::Memory& memory,
+                     uint32_t draw_resolution_scale_x, uint32_t draw_resolution_scale_y,
+                     bool fixed_rg16_truncated_to_minus_1_to_1,
+-                    bool fixed_rgba16_truncated_to_minus_1_to_1, ResolveInfo& info_out);
++                    bool fixed_rgba16_truncated_to_minus_1_to_1, ResolveInfo& info_out,
++                    TraceWriter* trace_writer = nullptr);
+ 
+ }  // namespace rex::graphics::draw_util
+diff --git a/include/rex/graphics/util/draw_extent_estimator.h b/include/rex/graphics/util/draw_extent_estimator.h
+index e5e4908..5a2adac 100644
+--- a/include/rex/graphics/util/draw_extent_estimator.h
++++ b/include/rex/graphics/util/draw_extent_estimator.h
+@@ -20,6 +20,8 @@
+ 
+ namespace rex::graphics {
+ 
++class TraceWriter;
++
+ class DrawExtentEstimator {
+  public:
+   DrawExtentEstimator(const RegisterFile& register_file, const memory::Memory& memory)
+@@ -27,6 +29,12 @@ class DrawExtentEstimator {
+         memory_(memory),
+         shader_interpreter_(register_file, memory) {}
+ 
++  // Records the guest memory read on the CPU if not null.
++  void SetTraceWriter(TraceWriter* trace_writer) {
++    trace_writer_ = trace_writer;
++    shader_interpreter_.SetTraceWriter(trace_writer);
++  }
++
+   // The shader must have its ucode analyzed.
+   uint32_t EstimateVertexMaxY(const Shader& vertex_shader);
+   uint32_t EstimateMaxY(bool try_to_estimate_vertex_max_y, const Shader& vertex_shader);
+@@ -60,6 +68,8 @@ class DrawExtentEstimator {
+   const memory::Memory& memory_;
+ 
+   ShaderInterpreter shader_interpreter_;
++
++  TraceWriter* trace_writer_ = nullptr;
+ };
+ 
+ }  // namespace rex::graphics
+diff --git a/src/graphics/CMakeLists.txt b/src/graphics/CMakeLists.txt
+index 0d8f8af..022b6d3 100644
+--- a/src/graphics/CMakeLists.txt
++++ b/src/graphics/CMakeLists.txt
+@@ -18,6 +18,7 @@ set(REXGPU_XENOS_SOURCES
+     # GPU system
+     graphics_system.cpp
+     command_processor.cpp
++    trace_writer.cpp
+     util/draw_extent_estimator.cpp
+     util/draw.cpp
+     packet_disassembler.cpp
+diff --git a/src/graphics/command_processor.cpp b/src/graphics/command_processor.cpp
+index c7f2963..3ae98a7 100644
+--- a/src/graphics/command_processor.cpp
++++ b/src/graphics/command_processor.cpp
+@@ -14,12 +14,16 @@
+ #include <cinttypes>
+ #include <cmath>
+ #include <cstring>
++#include <ctime>
++#include <filesystem>
+ #include <string_view>
++#include <system_error>
+ 
+ #include <fmt/format.h>
+ 
+ #include <rex/cvar.h>
+ #include <rex/dbg.h>
++#include <rex/filesystem.h>
+ #include <rex/perf/counter.h>
+ #include <rex/chrono/clock.h>
+ #include <rex/graphics/command_processor.h>
+@@ -81,6 +85,27 @@ REXCVAR_DEFINE_BOOL(async_shader_compilation, true, "GPU",
+                     "pipelines are being prepared.")
+     .lifecycle(rex::cvar::Lifecycle::kHotReload);
+ 
++REXCVAR_DEFINE_STRING(trace_gpu_prefix, "", "GPU/Trace",
++                      "Folder for GPU trace (.xtr) files. Empty: logs/gpu_traces next to the "
++                      "executable.")
++    .lifecycle(rex::cvar::Lifecycle::kHotReload);
++
++REXCVAR_DEFINE_BOOL(trace_gpu_stream, false, "GPU/Trace",
++                    "Record all GPU commands from startup until exit into one trace file. "
++                    "Slow, and the file grows quickly.")
++    .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
++
++REXCVAR_DEFINE_INT32(trace_gpu_frame_count, 1, "GPU/Trace",
++                     "Number of consecutive guest frames recorded by one GPU trace capture.")
++    .range(1, 1000)
++    .lifecycle(rex::cvar::Lifecycle::kHotReload);
++
++REXCVAR_DEFINE_INT32(trace_gpu_capture_at_frame, 0, "GPU/Trace",
++                     "Start a GPU trace capture automatically once this many guest frames have "
++                     "been presented since startup (0 = off).")
++    .range(0, 100000000)
++    .lifecycle(rex::cvar::Lifecycle::kHotReload);
++
+ namespace rex::graphics {
+ 
+ using namespace rex::graphics::xenos;
+@@ -100,6 +125,29 @@ ReadbackResolveMode ParseReadbackResolveMode(std::string_view value) {
+   return ReadbackResolveMode::kDisabled;
+ }
+ 
++std::filesystem::path GetTraceDirectory() {
++  std::string prefix = REXCVAR_GET(trace_gpu_prefix);
++  if (!prefix.empty()) {
++    return rex::to_path(prefix);
++  }
++  return rex::filesystem::GetExecutableFolder() / "logs" / "gpu_traces";
++}
++
++std::string GetTraceTimestamp() {
++  std::time_t now = std::time(nullptr);
++  std::tm local_time = {};
++#ifdef _WIN32
++  localtime_s(&local_time, &now);
++#else
++  localtime_r(&now, &local_time);
++#endif
++  char timestamp[32];
++  if (!std::strftime(timestamp, sizeof(timestamp), "%Y%m%d-%H%M%S", &local_time)) {
++    return "unknown";
++  }
++  return timestamp;
++}
++
+ }  // namespace
+ 
+ CommandProcessor::CommandProcessor(GraphicsSystem* graphics_system,
+@@ -108,6 +156,7 @@ CommandProcessor::CommandProcessor(GraphicsSystem* graphics_system,
+       kernel_state_(kernel_state),
+       graphics_system_(graphics_system),
+       register_file_(graphics_system_->register_file()),
++      trace_writer_(graphics_system->memory()->physical_membase()),
+       worker_running_(true),
+       write_ptr_index_event_(rex::thread::Event::CreateAutoResetEvent(false)),
+       write_ptr_index_(0) {
+@@ -136,6 +185,9 @@ bool CommandProcessor::Initialize() {
+     }
+   }
+ 
++  // Started on the first primary buffer so the trace covers everything.
++  trace_stream_pending_ = REXCVAR_GET(trace_gpu_stream);
++
+   worker_running_ = true;
+   worker_thread_ = system::object_ref<system::XHostThread>(
+       new system::XHostThread(kernel_state_, 128 * 1024, 0, [this]() {
+@@ -153,6 +205,9 @@ void CommandProcessor::Shutdown() {
+   write_ptr_index_event_->Set();
+   worker_thread_->Wait(0, 0, 0, nullptr);
+   worker_thread_.reset();
++
++  // The worker thread has exited, so the trace can't be written to anymore.
++  EndTrace();
+ }
+ 
+ void CommandProcessor::InitializeShaderStorage(const std::filesystem::path& cache_root,
+@@ -629,6 +684,14 @@ void CommandProcessor::ReturnFromWait() {}
+ uint32_t CommandProcessor::ExecutePrimaryBuffer(uint32_t read_index, uint32_t write_index) {
+   SCOPE_profile_cpu_f("gpu");
+ 
++  // Open a pending trace stream now, so it contains all commands.
++  if (trace_stream_pending_) [[unlikely]] {
++    trace_stream_pending_ = false;
++    BeginTrace(true);
++  }
++  trace_writer_.WritePrimaryBufferStart(
++      CpuToGpu(primary_buffer_ptr_ + read_index * uint32_t(sizeof(uint32_t))));
++
+   // Execute commands!
+   memory::RingBuffer reader(memory_->TranslatePhysical(primary_buffer_ptr_), primary_buffer_size_);
+   reader.set_read_offset(read_index * sizeof(uint32_t));
+@@ -644,12 +707,19 @@ uint32_t CommandProcessor::ExecutePrimaryBuffer(uint32_t read_index, uint32_t wr
+ 
+   OnPrimaryBufferEnd();
+ 
++  trace_writer_.WritePrimaryBufferEnd();
++
+   return write_index;
+ }
+ 
+ void CommandProcessor::ExecuteIndirectBuffer(uint32_t ptr, uint32_t count) {
+   SCOPE_profile_cpu_f("gpu");
+ 
++  // A frame trace starts right after a swap, usually inside an indirect buffer
++  // whose packet was executed before tracing began.
++  const bool traced_from_start = trace_writer_.is_open();
++  trace_writer_.WriteIndirectBufferStart(CpuToGpu(ptr));
++
+   // Execute commands!
+   memory::RingBuffer reader(memory_->TranslatePhysical(ptr), count * sizeof(uint32_t));
+   reader.set_write_offset(count * sizeof(uint32_t));
+@@ -661,6 +731,14 @@ void CommandProcessor::ExecuteIndirectBuffer(uint32_t ptr, uint32_t count) {
+       break;
+     }
+   } while (reader.read_count());
++
++  trace_writer_.WriteIndirectBufferEnd();
++  // Trace readers skip the PacketEnd of the enclosing packet that follows an
++  // IndirectBufferEnd. A packet executed before tracing began writes none, so
++  // write it here.
++  if (!traced_from_start) {
++    trace_writer_.WritePacketEnd();
++  }
+ }
+ 
+ void CommandProcessor::ExecutePacket(uint32_t ptr, uint32_t count) {
+@@ -677,6 +755,11 @@ void CommandProcessor::ExecutePacket(uint32_t ptr, uint32_t count) {
+ }
+ 
+ bool CommandProcessor::ExecutePacket(memory::RingBuffer* reader) {
++  // The only cost of tracing support while not tracing.
++  if (trace_writer_.is_open()) [[unlikely]] {
++    return ExecutePacketTraced(reader);
++  }
++
+   const uint32_t packet = reader->ReadAndSwap<uint32_t>();
+   const uint32_t packet_type = packet >> 30;
+   if (packet == 0) {
+@@ -702,6 +785,135 @@ bool CommandProcessor::ExecutePacket(memory::RingBuffer* reader) {
+   }
+ }
+ 
++bool CommandProcessor::ExecutePacketTraced(memory::RingBuffer* reader) {
++  // The whole packet is recorded before executing it, so on playback, memory
++  // reads recorded during its execution are applied before it's executed.
++  const uint8_t* ring = reader->buffer();
++  const uint32_t ring_capacity = reader->capacity();
++  const uint32_t packet_offset = reader->read_offset();
++  const uint32_t packet = reader->ReadAndSwap<uint32_t>();
++  const uint32_t packet_type = packet >> 30;
++
++  uint32_t packet_dwords = 1;
++  bool is_swap = false;
++  if (packet) {
++    switch (packet_type) {
++      case 0x00:
++      case 0x03:
++        packet_dwords = 1 + ((packet >> 16) & 0x3FFF) + 1;
++        // Predicated swaps are always skipped.
++        is_swap = packet_type == 0x03 && ((packet >> 8) & 0x7F) == PM4_XE_SWAP && !(packet & 1);
++        break;
++      case 0x01:
++        packet_dwords = 3;
++        break;
++      default:
++        break;
++    }
++  }
++  // Don't record beyond the submitted data for malformed packets.
++  packet_dwords = std::min(packet_dwords, 1 + reader->read_count() / uint32_t(sizeof(uint32_t)));
++  // Rings are always in the guest physical memory.
++  uint32_t packet_ptr = CpuToGpu(uint32_t(ring + packet_offset - memory_->physical_membase()));
++  trace_writer_.WritePacketStart(packet_ptr, ring, ring_capacity, packet_offset, packet_dwords);
++
++  bool result = false;
++  if (!packet) {
++    result = true;
++  } else {
++    if (packet == 0xCDCDCDCD) {
++      REXGPU_WARN("GPU packet is CDCDCDCD - probably read uninitialized memory!");
++    }
++    switch (packet_type) {
++      case 0x00:
++        result = ExecutePacketType0(reader, packet);
++        break;
++      case 0x01:
++        result = ExecutePacketType1(reader, packet);
++        break;
++      case 0x02:
++        result = ExecutePacketType2(reader, packet);
++        break;
++      case 0x03:
++        result = ExecutePacketType3(reader, packet);
++        break;
++      default:
++        assert_unhandled_case(packet_type);
++        break;
++    }
++  }
++
++  trace_writer_.WritePacketEnd();
++  if (is_swap) {
++    OnTracedSwap();
++  }
++  return result;
++}
++
++void CommandProcessor::OnTracedSwap() {
++  if (!trace_writer_.is_open()) {
++    return;
++  }
++  trace_writer_.WriteEvent(EventCommand::Type::kSwap);
++  ++trace_frames_recorded_;
++  if (trace_streaming_) {
++    trace_writer_.Flush();
++  } else if (!trace_frames_remaining_ || !--trace_frames_remaining_) {
++    EndTrace();
++  }
++}
++
++void CommandProcessor::BeginTrace(bool stream) {
++  if (trace_writer_.is_open()) {
++    return;
++  }
++  uint32_t title_id = kernel_state_ ? kernel_state_->title_id() : 0;
++  std::string file_name =
++      stream ? fmt::format("{:08X}_{}_stream.xtr", title_id, GetTraceTimestamp())
++             : fmt::format("{:08X}_{}_frame{}.xtr", title_id, GetTraceTimestamp(),
++                           trace_swap_count_ + 1);
++  if (!trace_writer_.Open(GetTraceDirectory() / file_name, title_id)) {
++    return;
++  }
++  trace_streaming_ = stream;
++  trace_frames_remaining_ =
++      stream ? 0 : uint32_t(std::max(REXCVAR_GET(trace_gpu_frame_count), int32_t(1)));
++  trace_frames_recorded_ = 0;
++  if (stream) {
++    REXGPU_INFO("GPU trace: recording all frames to {}", rex::path_to_utf8(trace_writer_.path()));
++  } else {
++    REXGPU_INFO("GPU trace: recording {} frame(s) to {}", trace_frames_remaining_,
++                rex::path_to_utf8(trace_writer_.path()));
++  }
++  InitializeTrace();
++}
++
++void CommandProcessor::EndTrace() {
++  if (!trace_writer_.is_open()) {
++    return;
++  }
++  bool succeeded = trace_writer_.Close();
++  trace_streaming_ = false;
++  trace_frames_remaining_ = 0;
++  if (succeeded) {
++    std::error_code error_code;
++    uintmax_t file_size = std::filesystem::file_size(trace_writer_.path(), error_code);
++    REXGPU_INFO("GPU trace: wrote {} frame(s), {} MB, to {}", trace_frames_recorded_,
++                error_code ? uintmax_t(0) : (file_size + (uintmax_t(1) << 20) - 1) >> 20,
++                rex::path_to_utf8(trace_writer_.path()));
++  }
++}
++
++void CommandProcessor::InitializeTrace() {
++  // Write the initial register values, to be loaded directly into the
++  // RegisterFile since all registers, including those that may have side
++  // effects on setting, will be saved.
++  trace_writer_.WriteRegisters(0, register_file_->values, RegisterFile::kRegisterCount, false);
++
++  trace_writer_.WriteGammaRamp(gamma_ramp_256_entry_table(), gamma_ramp_pwl_rgb(),
++                               gamma_ramp_rw_component_);
++}
++
+ bool CommandProcessor::ExecutePacketType0(memory::RingBuffer* reader, uint32_t packet) {
+   // Type-0 packet.
+   // Write count registers in sequence to the registers starting at
+@@ -975,6 +1187,20 @@ bool CommandProcessor::ExecutePacketType3_XE_SWAP(memory::RingBuffer* reader, ui
+   IssueSwap(frontbuffer_ptr, frontbuffer_width, frontbuffer_height);
+ 
+   ++counter_;
++
++  // Frame traces start at a frame boundary, right after the swap.
++  ++trace_swap_count_;
++  int32_t trace_capture_at_frame = REXCVAR_GET(trace_gpu_capture_at_frame);
++  if (trace_frame_requested_.load(std::memory_order_relaxed) ||
++      (trace_capture_at_frame > 0 && trace_swap_count_ == uint32_t(trace_capture_at_frame)))
++      [[unlikely]] {
++    trace_frame_requested_.store(false, std::memory_order_relaxed);
++    if (trace_writer_.is_open()) {
++      REXGPU_WARN("GPU trace: a trace is already being recorded, request ignored");
++    } else {
++      BeginTrace(false);
++    }
++  }
+   return true;
+ }
+ 
+@@ -1066,6 +1292,11 @@ bool CommandProcessor::ExecutePacketType3_WAIT_REG_MEM(memory::RingBuffer* reade
+     }
+   } while (!matched);
+ 
++  // The value that satisfied the wait, so playback doesn't wait.
++  if (is_memory) {
++    trace_writer_.WriteMemoryRead(CpuToGpu(poll_reg_addr & ~uint32_t(0x3)), sizeof(uint32_t));
++  }
++
+   return true;
+ }
+ 
+@@ -1109,6 +1340,7 @@ bool CommandProcessor::ExecutePacketType3_REG_TO_MEM(memory::RingBuffer* reader,
+   mem_addr &= ~0x3;
+   reg_val = GpuSwap(reg_val, endianness);
+   memory::store(memory_->TranslatePhysical(mem_addr), reg_val);
++  trace_writer_.WriteMemoryWrite(CpuToGpu(mem_addr), sizeof(uint32_t));
+ 
+   return true;
+ }
+@@ -1116,6 +1348,7 @@ bool CommandProcessor::ExecutePacketType3_REG_TO_MEM(memory::RingBuffer* reader,
+ bool CommandProcessor::ExecutePacketType3_MEM_WRITE(memory::RingBuffer* reader, uint32_t packet,
+                                                     uint32_t count) {
+   uint32_t write_addr = reader->ReadAndSwap<uint32_t>();
++  const uint32_t write_addr_first = write_addr & ~uint32_t(0x3);
+   for (uint32_t i = 0; i < count - 1; i++) {
+     uint32_t write_data = reader->ReadAndSwap<uint32_t>();
+ 
+@@ -1125,6 +1358,10 @@ bool CommandProcessor::ExecutePacketType3_MEM_WRITE(memory::RingBuffer* reader,
+     memory::store(memory_->TranslatePhysical(addr), write_data);
+     write_addr += 4;
+   }
++  if (count > 1) {
++    trace_writer_.WriteMemoryWrite(CpuToGpu(write_addr_first),
++                                   sizeof(uint32_t) * size_t(count - 1));
++  }
+ 
+   return true;
+ }
+@@ -1143,6 +1380,7 @@ bool CommandProcessor::ExecutePacketType3_COND_WRITE(memory::RingBuffer* reader,
+     // Memory.
+     auto endianness = static_cast<xenos::Endian>(poll_reg_addr & 0x3);
+     poll_reg_addr &= ~0x3;
++    trace_writer_.WriteMemoryRead(CpuToGpu(poll_reg_addr), sizeof(uint32_t));
+     value = memory::load<uint32_t>(memory_->TranslatePhysical(poll_reg_addr));
+     value = GpuSwap(value, endianness);
+   } else {
+@@ -1184,6 +1422,7 @@ bool CommandProcessor::ExecutePacketType3_COND_WRITE(memory::RingBuffer* reader,
+       write_reg_addr &= ~0x3;
+       write_data = GpuSwap(write_data, endianness);
+       memory::store(memory_->TranslatePhysical(write_reg_addr), write_data);
++      trace_writer_.WriteMemoryWrite(CpuToGpu(write_reg_addr), sizeof(uint32_t));
+     } else {
+       // Register.
+       WriteRegister(write_reg_addr, write_data);
+@@ -1229,6 +1468,7 @@ bool CommandProcessor::ExecutePacketType3_EVENT_WRITE_SHD(memory::RingBuffer* re
+   address &= ~0x3;
+   data_value = GpuSwap(data_value, endianness);
+   memory::store(memory_->TranslatePhysical(address), data_value);
++  trace_writer_.WriteMemoryWrite(CpuToGpu(address), sizeof(uint32_t));
+   return true;
+ }
+ 
+@@ -1257,6 +1497,7 @@ bool CommandProcessor::ExecutePacketType3_EVENT_WRITE_EXT(memory::RingBuffer* re
+   assert_true(endianness == xenos::Endian::k8in16);
+   memory::copy_and_swap_16_unaligned(memory_->TranslatePhysical(address), extents,
+                                      rex::countof(extents));
++  trace_writer_.WriteMemoryWrite(CpuToGpu(address), sizeof(extents));
+   return true;
+ }
+ 
+@@ -1494,6 +1735,9 @@ bool CommandProcessor::ExecutePacketType3_LOAD_ALU_CONSTANT(memory::RingBuffer*
+   size_dwords &= 0xFFF;
+   uint32_t type = (offset_type >> 16) & 0xFF;
+   uint32_t* xlat_address = memory_->TranslatePhysical<uint32_t*>(address);
++  if (type <= 4) {
++    trace_writer_.WriteMemoryRead(CpuToGpu(address), sizeof(uint32_t) * size_dwords);
++  }
+   switch (type) {
+     case 0:  // ALU
+       WriteALURangeFromMem(index, xlat_address, size_dwords);
+@@ -1538,6 +1782,7 @@ bool CommandProcessor::ExecutePacketType3_IM_LOAD(memory::RingBuffer* reader, ui
+   uint32_t size_dwords = start_size & 0xFFFF;  // dwords
+   assert_true(start == 0);
+ 
++  trace_writer_.WriteMemoryRead(CpuToGpu(addr), sizeof(uint32_t) * size_dwords);
+   auto shader =
+       LoadShader(shader_type, addr, memory_->TranslatePhysical<uint32_t*>(addr), size_dwords);
+   switch (shader_type) {
+diff --git a/src/graphics/d3d12/command_processor.cpp b/src/graphics/d3d12/command_processor.cpp
+index 7e8c860..3b4743d 100644
+--- a/src/graphics/d3d12/command_processor.cpp
++++ b/src/graphics/d3d12/command_processor.cpp
+@@ -970,6 +970,7 @@ bool D3D12CommandProcessor::SetupContext() {
+     REXGPU_ERROR("Failed to initialize the render target cache");
+     return false;
+   }
++  render_target_cache_->SetTraceWriter(&trace_writer_);
+ 
+   // Initialize resource binding.
+   constant_buffer_pool_ = std::make_unique<ui::d3d12::D3D12UploadBufferPool>(
+@@ -1215,6 +1216,7 @@ bool D3D12CommandProcessor::SetupContext() {
+     REXGPU_ERROR("Failed to initialize the geometric primitive processor");
+     return false;
+   }
++  primitive_processor_->SetTraceWriter(&trace_writer_);
+ 
+   texture_cache_ =
+       D3D12TextureCache::Create(*register_file_, *shared_memory_, draw_resolution_scale_x,
+@@ -3019,6 +3021,28 @@ bool D3D12CommandProcessor::IssueDraw_MemexportReadbackFastPath(uint32_t total_s
+   return true;
+ }
+ 
++void D3D12CommandProcessor::InitializeTrace() {
++  CommandProcessor::InitializeTrace();
++
++  if (!shared_memory_ || !render_target_cache_ || !BeginSubmission(false)) {
++    return;
++  }
++  bool render_target_cache_submitted = render_target_cache_->InitializeTraceSubmitDownloads();
++  bool shared_memory_submitted = shared_memory_->InitializeTraceSubmitDownloads();
++  if (!render_target_cache_submitted && !shared_memory_submitted) {
++    return;
++  }
++  // Ends the submission and waits for its fence, which with asynchronous
++  // submission is signaled by the submission thread.
++  AwaitAllQueueOperationsCompletion();
++  if (render_target_cache_submitted) {
++    render_target_cache_->InitializeTraceCompleteDownloads();
++  }
++  if (shared_memory_submitted) {
++    shared_memory_->InitializeTraceCompleteDownloads();
++  }
++}
++
+ bool D3D12CommandProcessor::IssueCopy() {
+ #if XE_GPU_FINE_GRAINED_DRAW_SCOPES
+   SCOPE_profile_cpu_f("gpu");
+diff --git a/src/graphics/d3d12/render_target_cache.cpp b/src/graphics/d3d12/render_target_cache.cpp
+index dd321a5..45556f2 100644
+--- a/src/graphics/d3d12/render_target_cache.cpp
++++ b/src/graphics/d3d12/render_target_cache.cpp
+@@ -1031,6 +1031,8 @@ void D3D12RenderTargetCache::Shutdown(bool from_destructor) {
+   }
+   ui::d3d12::util::ReleaseAndNull(resolve_copy_root_signature_);
+ 
++  ui::d3d12::util::ReleaseAndNull(edram_snapshot_download_buffer_);
++
+   ui::d3d12::util::ReleaseAndNull(edram_buffer_descriptor_heap_);
+   ui::d3d12::util::ReleaseAndNull(edram_buffer_);
+ 
+@@ -1171,7 +1173,8 @@ bool D3D12RenderTargetCache::Resolve(const memory::Memory& memory, D3D12SharedMe
+   bool fixed_16_truncated_to_minus_1_to_1 = IsFixed16TruncatedToMinus1To1();
+   if (!draw_util::GetResolveInfo(register_file(), memory, draw_resolution_scale_x(),
+                                  draw_resolution_scale_y(), fixed_16_truncated_to_minus_1_to_1,
+-                                 fixed_16_truncated_to_minus_1_to_1, resolve_info)) {
++                                 fixed_16_truncated_to_minus_1_to_1, resolve_info,
++                                 &command_processor_.trace_writer())) {
+     return false;
+   }
+ 
+@@ -1700,6 +1703,56 @@ RenderTargetCache::RenderTarget* D3D12RenderTargetCache::CreateRenderTarget(Rend
+                                std::move(descriptor_srv_stencil), resource_state);
+ }
+ 
++bool D3D12RenderTargetCache::InitializeTraceSubmitDownloads() {
++  if (IsDrawResolutionScaled()) {
++    // No 1:1 mapping.
++    return false;
++  }
++  if (!edram_snapshot_download_buffer_) {
++    D3D12_RESOURCE_DESC edram_snapshot_download_buffer_desc;
++    ui::d3d12::util::FillBufferResourceDesc(edram_snapshot_download_buffer_desc,
++                                            xenos::kEdramSizeBytes, D3D12_RESOURCE_FLAG_NONE);
++    const ui::d3d12::D3D12Provider& provider = command_processor_.GetD3D12Provider();
++    ID3D12Device* device = provider.GetDevice();
++    if (FAILED(device->CreateCommittedResource(
++            &ui::d3d12::util::kHeapPropertiesReadback, provider.GetHeapFlagCreateNotZeroed(),
++            &edram_snapshot_download_buffer_desc, D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
++            IID_PPV_ARGS(&edram_snapshot_download_buffer_)))) {
++      REXGPU_ERROR("D3D12RenderTargetCache: Failed to create a EDRAM snapshot download buffer");
++      return false;
++    }
++  }
++  if (GetPath() == Path::kHostRenderTargets) {
++    // Dump all host render targets to edram_buffer_.
++    if (!DumpRenderTargets(0, xenos::kEdramTileCount, 1, xenos::kEdramTileCount)) {
++      REXGPU_ERROR("D3D12RenderTargetCache: Failed to dump host render targets for trace");
++      ui::d3d12::util::ReleaseAndNull(edram_snapshot_download_buffer_);
++      return false;
++    }
++  }
++  TransitionEdramBuffer(D3D12_RESOURCE_STATE_COPY_SOURCE);
++  command_processor_.SubmitBarriers();
++  command_processor_.GetDeferredCommandList().D3DCopyBufferRegion(
++      edram_snapshot_download_buffer_, 0, edram_buffer_, 0, xenos::kEdramSizeBytes);
++  return true;
++}
++
++void D3D12RenderTargetCache::InitializeTraceCompleteDownloads() {
++  if (!edram_snapshot_download_buffer_) {
++    return;
++  }
++  void* download_mapping;
++  if (SUCCEEDED(edram_snapshot_download_buffer_->Map(0, nullptr, &download_mapping))) {
++    command_processor_.trace_writer().WriteEdramSnapshot(download_mapping);
++    D3D12_RANGE download_write_range = {};
++    edram_snapshot_download_buffer_->Unmap(0, &download_write_range);
++  } else {
++    REXGPU_ERROR("D3D12RenderTargetCache: Failed to map the EDRAM snapshot download buffer");
++  }
++  // 10 MB, not worth keeping between traces.
++  ui::d3d12::util::ReleaseAndNull(edram_snapshot_download_buffer_);
++}
++
+ bool D3D12RenderTargetCache::IsHostDepthEncodingDifferent(
+     xenos::DepthRenderTargetFormat format) const {
+   if (format == xenos::DepthRenderTargetFormat::kD24FS8) {
+diff --git a/src/graphics/d3d12/shared_memory.cpp b/src/graphics/d3d12/shared_memory.cpp
+index a5c97a0..2da52fb 100644
+--- a/src/graphics/d3d12/shared_memory.cpp
++++ b/src/graphics/d3d12/shared_memory.cpp
+@@ -142,6 +142,8 @@ bool D3D12SharedMemory::Initialize() {
+ }
+ 
+ void D3D12SharedMemory::Shutdown(bool from_destructor) {
++  ResetTraceDownload();
++
+   upload_buffer_pool_.reset();
+ 
+   ui::d3d12::util::ReleaseAndNull(buffer_descriptor_heap_);
+@@ -260,6 +262,71 @@ void D3D12SharedMemory::WriteUintPow2UAVDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE h
+       D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+ }
+ 
++bool D3D12SharedMemory::InitializeTraceSubmitDownloads() {
++  ResetTraceDownload();
++  PrepareForTraceDownload();
++  uint32_t download_page_count = trace_download_page_count();
++  if (!download_page_count) {
++    return false;
++  }
++  D3D12_RESOURCE_DESC download_buffer_desc;
++  ui::d3d12::util::FillBufferResourceDesc(download_buffer_desc,
++                                          UINT64(download_page_count) << page_size_log2(),
++                                          D3D12_RESOURCE_FLAG_NONE);
++  const ui::d3d12::D3D12Provider& provider = command_processor_.GetD3D12Provider();
++  ID3D12Device* device = provider.GetDevice();
++  if (FAILED(device->CreateCommittedResource(&ui::d3d12::util::kHeapPropertiesReadback,
++                                             provider.GetHeapFlagCreateNotZeroed(),
++                                             &download_buffer_desc, D3D12_RESOURCE_STATE_COPY_DEST,
++                                             nullptr, IID_PPV_ARGS(&trace_download_buffer_)))) {
++    REXGPU_ERROR(
++        "Shared memory: Failed to create a {} KB GPU-written memory download "
++        "buffer for frame tracing",
++        uint64_t(download_page_count) << page_size_log2() >> 10);
++    ResetTraceDownload();
++    return false;
++  }
++  auto& command_list = command_processor_.GetDeferredCommandList();
++  UseAsCopySource();
++  command_processor_.SubmitBarriers();
++  uint32_t download_buffer_offset = 0;
++  for (const auto& download_range : trace_download_ranges()) {
++    command_list.D3DCopyBufferRegion(trace_download_buffer_, download_buffer_offset, buffer_,
++                                     download_range.first, download_range.second);
++    download_buffer_offset += download_range.second;
++  }
++  return true;
++}
++
++void D3D12SharedMemory::InitializeTraceCompleteDownloads() {
++  if (!trace_download_buffer_) {
++    return;
++  }
++  void* download_mapping;
++  if (SUCCEEDED(trace_download_buffer_->Map(0, nullptr, &download_mapping))) {
++    TraceWriter& trace_writer = command_processor_.trace_writer();
++    uint32_t download_buffer_offset = 0;
++    for (const auto& download_range : trace_download_ranges()) {
++      trace_writer.WriteMemoryRead(
++          download_range.first, download_range.second,
++          reinterpret_cast<const uint8_t*>(download_mapping) + download_buffer_offset);
++      download_buffer_offset += download_range.second;
++    }
++    D3D12_RANGE download_write_range = {};
++    trace_download_buffer_->Unmap(0, &download_write_range);
++  } else {
++    REXGPU_ERROR(
++        "Shared memory: Failed to map the GPU-written memory download buffer "
++        "for frame tracing");
++  }
++  ResetTraceDownload();
++}
++
++void D3D12SharedMemory::ResetTraceDownload() {
++  ui::d3d12::util::ReleaseAndNull(trace_download_buffer_);
++  ReleaseTraceDownloadRanges();
++}
++
+ bool D3D12SharedMemory::AllocateSparseHostGpuMemoryRange(uint32_t offset_allocations,
+                                                          uint32_t length_allocations) {
+   if (!length_allocations) {
+@@ -309,6 +376,7 @@ bool D3D12SharedMemory::UploadRanges(
+   CommitUAVWritesAndTransitionBuffer(D3D12_RESOURCE_STATE_COPY_DEST);
+   command_processor_.SubmitBarriers();
+   auto& command_list = command_processor_.GetDeferredCommandList();
++  TraceWriter& trace_writer = command_processor_.trace_writer();
+   for (auto upload_range : upload_page_ranges) {
+     uint32_t upload_range_start = upload_range.first;
+     uint32_t upload_range_length = upload_range.second;
+@@ -327,6 +395,8 @@ bool D3D12SharedMemory::UploadRanges(
+       std::memcpy(upload_buffer_mapping,
+                   memory().TranslatePhysical(upload_range_start << page_size_log2()),
+                   upload_buffer_size);
++      // From guest memory, not reading back from the write-combined mapping.
++      trace_writer.WriteMemoryRead(upload_range_start << page_size_log2(), upload_buffer_size);
+       command_list.D3DCopyBufferRegion(buffer_, upload_range_start << page_size_log2(),
+                                        upload_buffer, UINT64(upload_buffer_offset),
+                                        UINT64(upload_buffer_size));
+diff --git a/src/graphics/graphics_system.cpp b/src/graphics/graphics_system.cpp
+index 8f2fcb0..927be6d 100644
+--- a/src/graphics/graphics_system.cpp
++++ b/src/graphics/graphics_system.cpp
+@@ -28,6 +28,7 @@
+ #include <rex/system/kernel_state.h>
+ #include <rex/system/xthread.h>
+ #include <rex/ui/graphics_provider.h>
++#include <rex/ui/keybinds.h>
+ #include <rex/ui/window.h>
+ #include <rex/ui/windowed_app_context.h>
+ 
+@@ -41,6 +42,9 @@ REXCVAR_DEFINE_BOOL(store_shaders, true, "GPU",
+ 
+ namespace {
+ 
++// Hotkey requesting a GPU trace, rebindable like the overlay hotkeys.
++constexpr char kGpuTraceBindName[] = "bind_gpu_trace";
++
+ rex::graphics::CommandProcessor::SwapPostEffect ParseSwapPostEffect(
+     const std::string& effect_name) {
+   std::string lowered = effect_name;
+@@ -137,6 +141,16 @@ X_STATUS GraphicsSystem::SetupGuestGpu(runtime::FunctionDispatcher* function_dis
+   }
+   command_processor_->SetDesiredSwapPostEffect(ParseSwapPostEffect(REXCVAR_GET(swap_post_effect)));
+ 
++  // Invoked on the UI thread with the bind registry locked, and unregistered
++  // under the same lock before the command processor is destroyed.
++  rex::ui::RegisterBind(kGpuTraceBindName, "F9",
++                        "Record a GPU trace of the next frame (settings in GPU/Trace)", [this]() {
++                          if (command_processor_) {
++                            command_processor_->RequestFrameTrace();
++                            REXGPU_INFO("GPU trace: capture requested");
++                          }
++                        });
++
+   // Register GPU MMIO handlers
+   // GPU registers are at 0x7FC80000-0x7FCFFFFF
+   memory_->AddVirtualMappedRange(0x7FC80000,  // base address
+@@ -179,6 +193,9 @@ X_STATUS GraphicsSystem::SetupGuestGpu(runtime::FunctionDispatcher* function_dis
+ }
+ 
+ void GraphicsSystem::Shutdown() {
++  // No-op if it was never registered.
++  rex::ui::UnregisterBind(kGpuTraceBindName);
++
+   if (command_processor_) {
+     command_processor_->Shutdown();
+     command_processor_.reset();
+diff --git a/src/graphics/pipeline/shader/interpreter.cpp b/src/graphics/pipeline/shader/interpreter.cpp
+index cc726b7..157e5a2 100644
+--- a/src/graphics/pipeline/shader/interpreter.cpp
++++ b/src/graphics/pipeline/shader/interpreter.cpp
+@@ -16,6 +16,7 @@
+ #include <rex/assert.h>
+ #include <rex/graphics/pipeline/shader/interpreter.h>
+ #include <rex/graphics/registers.h>
++#include <rex/graphics/trace_writer.h>
+ #include <rex/graphics/xenos.h>
+ #include <rex/math.h>
+ #include <rex/types.h>
+@@ -961,6 +962,9 @@ void ShaderInterpreter::ExecuteVertexFetchInstruction(ucode::VertexFetchInstruct
+       uint32_t dword_address_dwords = dword_0_address_dwords + i;
+       if (dword_address_dwords >= fetch_constant.address &&
+           dword_address_dwords < buffer_end_dwords) {
++        if (trace_writer_) {
++          trace_writer_->WriteMemoryRead(sizeof(uint32_t) * dword_address_dwords, sizeof(uint32_t));
++        }
+         dword_value = xenos::GpuSwap(memory_dwords[dword_address_dwords], fetch_constant.endian);
+       }
+       data[i] = dword_value;
+diff --git a/src/graphics/primitive_processor.cpp b/src/graphics/primitive_processor.cpp
+index d49e9c3..74a137d 100644
+--- a/src/graphics/primitive_processor.cpp
++++ b/src/graphics/primitive_processor.cpp
+@@ -22,6 +22,7 @@
+ #include <rex/graphics/primitive_processor.h>
+ #include <rex/graphics/register_file.h>
+ #include <rex/graphics/registers.h>
++#include <rex/graphics/trace_writer.h>
+ #include <rex/graphics/xenos.h>
+ #include <rex/logging.h>
+ #include <rex/math.h>
+@@ -638,6 +639,11 @@ bool PrimitiveProcessor::Process(ProcessingResult& result_out) {
+       // performed during conversion here. Also doing the endian swap here for
+       // hosts not supporting 32-bit indices because indirection is only used
+       // for the shared memory buffer.
++      // Writing to the trace irrespective of the cache lookup result because
++      // cache behavior depends on runtime configuration and state.
++      if (trace_writer_) {
++        trace_writer_->WriteMemoryRead(guest_index_base, guest_index_buffer_needed_bytes);
++      }
+       CacheTransaction cache_transaction(
+           *this, CacheKey(guest_index_base, guest_draw_vertex_count, guest_index_format,
+                           guest_index_endian, guest_primitive_reset_enabled, guest_primitive_type));
+@@ -777,6 +783,12 @@ bool PrimitiveProcessor::Process(ProcessingResult& result_out) {
+             // 0xFFFF if 0xFFFF is not used as a real index, or with 0xFFFFFFFF
+             // if it is.
+             // Example of 16-bit reset index replacement: 415607D4.
++            // Writing to the trace irrespective of the cache lookup result
++            // because cache behavior depends on runtime configuration and
++            // state.
++            if (trace_writer_) {
++              trace_writer_->WriteMemoryRead(guest_index_base, guest_index_buffer_needed_bytes);
++            }
+             // Not specifying the primitive type in the cache key because not
+             // replacing it, only the reset index in a type-independent way.
+             CacheTransaction cache_transaction(
+@@ -823,6 +835,11 @@ bool PrimitiveProcessor::Process(ProcessingResult& result_out) {
+           // actually used, thus exactly 0xFFFFFFFF must be sent to the host for
+           // it in a true index buffer), no indirection is done, but
+           // pre-swapping and pre-masking is done here.
++          // Writing to the trace irrespective of the cache lookup result
++          // because cache behavior depends on runtime configuration and state.
++          if (trace_writer_) {
++            trace_writer_->WriteMemoryRead(guest_index_base, guest_index_buffer_needed_bytes);
++          }
+           // Not specifying the primitive type in the cache key because not
+           // replacing it, only the reset index in a type-independent way.
+           CacheTransaction cache_transaction(
+@@ -877,6 +894,9 @@ bool PrimitiveProcessor::Process(ProcessingResult& result_out) {
+       if (cacheable.index_buffer_type == ProcessedIndexBufferType::kGuestDMA &&
+           guest_index_format == xenos::IndexFormat::kInt32 && !full_32bit_vertex_indices_used_ &&
+           host_vertex_shader_type != Shader::HostVertexShaderType::kVertex) {
++        if (trace_writer_) {
++          trace_writer_->WriteMemoryRead(guest_index_base, guest_index_buffer_needed_bytes);
++        }
+         // No primitive-type conversion, just index normalization.
+         CacheTransaction cache_transaction(
+             *this, CacheKey(guest_index_base, guest_draw_vertex_count, guest_index_format,
+diff --git a/src/graphics/shared_memory.cpp b/src/graphics/shared_memory.cpp
+index 74a9881..67cfd96 100644
+--- a/src/graphics/shared_memory.cpp
++++ b/src/graphics/shared_memory.cpp
+@@ -65,6 +65,8 @@ void SharedMemory::ShutdownCommon() {
+   }
+   watch_range_pools_.clear();
+ 
++  ReleaseTraceDownloadRanges();
++
+   if (memory_invalidation_callback_handle_ != nullptr) {
+     memory_.UnregisterPhysicalMemoryInvalidationCallback(memory_invalidation_callback_handle_);
+     memory_invalidation_callback_handle_ = nullptr;
+@@ -537,6 +539,98 @@ std::pair<uint32_t, uint32_t> SharedMemory::MemoryInvalidationCallback(
+                                                            << page_size_log2_);
+ }
+ 
++void SharedMemory::PrepareForTraceDownload() {
++  ReleaseTraceDownloadRanges();
++  assert_true(trace_download_ranges_.empty());
++  assert_zero(trace_download_page_count_);
++
++  // Invalidate the entire memory CPU->GPU memory copy so all the history
++  // doesn't have to be written into every frame trace, and collect the list of
++  // ranges with data modified on the GPU.
++
++  uint32_t fire_watches_range_start = UINT32_MAX;
++  uint32_t gpu_written_range_start = UINT32_MAX;
++  auto global_lock = global_critical_region_.Acquire();
++  for (uint32_t i = 0; i < num_system_page_flags_; ++i) {
++    uint64_t previously_valid_block = system_page_flags_valid_[i];
++    uint64_t gpu_written_block = system_page_flags_valid_and_gpu_written_[i];
++    system_page_flags_valid_[i] = gpu_written_block;
++
++    // Fire watches on the invalidated pages.
++    uint64_t fire_watches_block = previously_valid_block & ~gpu_written_block;
++    uint64_t fire_watches_break_block = ~fire_watches_block;
++    while (true) {
++      uint32_t fire_watches_block_page;
++      if (!rex::bit_scan_forward(fire_watches_range_start == UINT32_MAX ? fire_watches_block
++                                                                        : fire_watches_break_block,
++                                 &fire_watches_block_page)) {
++        break;
++      }
++      uint32_t fire_watches_page = (i << 6) + fire_watches_block_page;
++      if (fire_watches_range_start == UINT32_MAX) {
++        fire_watches_range_start = fire_watches_page;
++      } else {
++        FireWatches(fire_watches_range_start, fire_watches_page - 1, false);
++        fire_watches_range_start = UINT32_MAX;
++      }
++      uint64_t fire_watches_block_mask = ~((uint64_t(1) << fire_watches_block_page) - 1);
++      fire_watches_block &= fire_watches_block_mask;
++      fire_watches_break_block &= fire_watches_block_mask;
++    }
++
++    // Add to the GPU-written ranges.
++    uint64_t gpu_written_break_block = ~gpu_written_block;
++    while (true) {
++      uint32_t gpu_written_block_page;
++      if (!rex::bit_scan_forward(
++              gpu_written_range_start == UINT32_MAX ? gpu_written_block : gpu_written_break_block,
++              &gpu_written_block_page)) {
++        break;
++      }
++      uint32_t gpu_written_page = (i << 6) + gpu_written_block_page;
++      if (gpu_written_range_start == UINT32_MAX) {
++        gpu_written_range_start = gpu_written_page;
++      } else {
++        uint32_t gpu_written_range_length = gpu_written_page - gpu_written_range_start;
++        // Call EnsureHostGpuMemoryAllocated in case the page was marked as
++        // GPU-written not as a result to an actual write to the shared memory
++        // buffer, but, for instance, by resolving with resolution scaling (to a
++        // separate buffer).
++        if (EnsureHostGpuMemoryAllocated(gpu_written_range_start << page_size_log2_,
++                                         gpu_written_range_length << page_size_log2_)) {
++          trace_download_ranges_.push_back(
++              std::make_pair(gpu_written_range_start << page_size_log2_,
++                             gpu_written_range_length << page_size_log2_));
++          trace_download_page_count_ += gpu_written_range_length;
++        }
++        gpu_written_range_start = UINT32_MAX;
++      }
++      uint64_t gpu_written_block_mask = ~((uint64_t(1) << gpu_written_block_page) - 1);
++      gpu_written_block &= gpu_written_block_mask;
++      gpu_written_break_block &= gpu_written_block_mask;
++    }
++  }
++  uint32_t page_count = kBufferSize >> page_size_log2_;
++  if (fire_watches_range_start != UINT32_MAX) {
++    FireWatches(fire_watches_range_start, page_count - 1, false);
++  }
++  if (gpu_written_range_start != UINT32_MAX) {
++    uint32_t gpu_written_range_length = page_count - gpu_written_range_start;
++    if (EnsureHostGpuMemoryAllocated(gpu_written_range_start << page_size_log2_,
++                                     gpu_written_range_length << page_size_log2_)) {
++      trace_download_ranges_.push_back(std::make_pair(gpu_written_range_start << page_size_log2_,
++                                                      gpu_written_range_length << page_size_log2_));
++      trace_download_page_count_ += gpu_written_range_length;
++    }
++  }
++}
++
++void SharedMemory::ReleaseTraceDownloadRanges() {
++  trace_download_ranges_.clear();
++  trace_download_ranges_.shrink_to_fit();
++  trace_download_page_count_ = 0;
++}
++
+ bool SharedMemory::EnsureHostGpuMemoryAllocated(uint32_t start, uint32_t length) {
+   if (host_gpu_memory_sparse_granularity_log2_ == UINT32_MAX) {
+     return true;
+diff --git a/src/graphics/trace_writer.cpp b/src/graphics/trace_writer.cpp
+new file mode 100644
+index 0000000..c64b26d
+--- /dev/null
++++ b/src/graphics/trace_writer.cpp
+@@ -0,0 +1,217 @@
++/**
++ ******************************************************************************
++ * Xenia : Xbox 360 Emulator Research Project                                 *
++ ******************************************************************************
++ * Copyright 2020 Ben Vanik. All rights reserved.                             *
++ * Released under the BSD license - see LICENSE in the root for more details. *
++ ******************************************************************************
++ *
++ * @modified    Tom Clay, 2026 - Adapted for ReXGlue runtime
++ */
++
++#include <algorithm>
++#include <cstring>
++#include <system_error>
++
++#include <rex/graphics/trace_writer.h>
++
++#include <rex/filesystem.h>
++#include <rex/graphics/registers.h>
++#include <rex/graphics/xenos.h>
++#include <rex/logging.h>
++#include <rex/version.h>
++
++namespace rex::graphics {
++
++namespace {
++
++// Size of the guest physical address space that base_ptr values refer to.
++constexpr uint32_t kPhysicalMemorySize = 0x20000000;
++
++// Most commands are small (packets are often a few dwords), buffer them.
++constexpr size_t kFileBufferSize = size_t(1) << 20;
++
++// Commands with padding are written as whole structures, zero the padding so
++// the output is deterministic.
++template <typename T>
++T MakeCommand(TraceCommandType type) {
++  T cmd;
++  std::memset(&cmd, 0, sizeof(cmd));
++  cmd.type = type;
++  return cmd;
++}
++
++}  // namespace
++
++TraceWriter::TraceWriter(uint8_t* membase) : membase_(membase) {}
++
++TraceWriter::~TraceWriter() {
++  Close();
++}
++
++bool TraceWriter::Open(const std::filesystem::path& path, uint32_t title_id) {
++  Close();
++
++  std::error_code error_code;
++  std::filesystem::path absolute_path = std::filesystem::absolute(path, error_code);
++  if (error_code) {
++    absolute_path = path;
++  }
++  if (absolute_path.has_parent_path()) {
++    std::filesystem::create_directories(absolute_path.parent_path(), error_code);
++  }
++
++  file_ = rex::filesystem::OpenFile(absolute_path, "wb");
++  if (!file_) {
++    REXGPU_ERROR("TraceWriter: Failed to open trace file: {}",
++                 rex::path_to_utf8(absolute_path));
++    return false;
++  }
++  std::setvbuf(file_, nullptr, _IOFBF, kFileBufferSize);
++  path_ = absolute_path;
++
++  // Write header first. Must be at the top of the file.
++  TraceHeader header;
++  std::memset(&header, 0, sizeof(header));
++  header.version = kTraceFormatVersion;
++  // Not a commit hash, identifies the recording runtime instead.
++  static const char kRecorderName[] = "rexglue " REXGLUE_VERSION_STRING;
++  std::memcpy(header.build_commit_sha, kRecorderName,
++              std::min(sizeof(header.build_commit_sha), sizeof(kRecorderName) - 1));
++  header.title_id = title_id;
++  Write(&header, sizeof(header));
++  return true;
++}
++
++void TraceWriter::Flush() {
++  if (file_) {
++    std::fflush(file_);
++  }
++}
++
++bool TraceWriter::Close() {
++  if (!file_) {
++    return true;
++  }
++  bool succeeded = std::ferror(file_) == 0;
++  if (std::fclose(file_) != 0) {
++    succeeded = false;
++  }
++  file_ = nullptr;
++  if (!succeeded) {
++    REXGPU_ERROR("TraceWriter: Failed to write trace file {}, the trace is incomplete",
++                 rex::path_to_utf8(path_));
++  }
++  return succeeded;
++}
++
++void TraceWriter::Write(const void* data, size_t size) {
++  if (size) {
++    std::fwrite(data, 1, size, file_);
++  }
++}
++
++void TraceWriter::WriteTypeOnlyCommand(TraceCommandType type) {
++  // PrimaryBufferEnd, IndirectBufferEnd and PacketEnd consist of the type only.
++  static_assert(sizeof(PrimaryBufferEndCommand) == sizeof(TraceCommandType));
++  static_assert(sizeof(IndirectBufferEndCommand) == sizeof(TraceCommandType));
++  static_assert(sizeof(PacketEndCommand) == sizeof(TraceCommandType));
++  Write(&type, sizeof(type));
++}
++
++void TraceWriter::WriteBufferStartCommand(TraceCommandType type, uint32_t base_ptr) {
++  // The buffer contents are recorded as packets, not as part of this command,
++  // so the count of trailing dwords is 0.
++  static_assert(sizeof(PrimaryBufferStartCommand) == sizeof(IndirectBufferStartCommand));
++  auto cmd = MakeCommand<PrimaryBufferStartCommand>(type);
++  cmd.base_ptr = base_ptr;
++  cmd.count = 0;
++  Write(&cmd, sizeof(cmd));
++}
++
++void TraceWriter::WritePacketStartCommand(uint32_t base_ptr, const uint8_t* ring,
++                                          uint32_t ring_capacity, uint32_t offset,
++                                          uint32_t dword_count) {
++  if (offset >= ring_capacity) {
++    offset = 0;
++  }
++  size_t length = std::min(size_t(dword_count) * sizeof(uint32_t), size_t(ring_capacity));
++  auto cmd = MakeCommand<PacketStartCommand>(TraceCommandType::kPacketStart);
++  cmd.base_ptr = base_ptr;
++  cmd.count = uint32_t(length / sizeof(uint32_t));
++  Write(&cmd, sizeof(cmd));
++  // Raw (guest-endian) dwords, continuing from the beginning of the ring if
++  // the packet wraps around its end.
++  size_t first_length = std::min(length, size_t(ring_capacity - offset));
++  Write(ring + offset, first_length);
++  Write(ring, length - first_length);
++}
++
++void TraceWriter::WriteMemoryCommand(TraceCommandType type, uint32_t base_ptr, size_t length,
++                                     const void* host_ptr) {
++  base_ptr &= kPhysicalMemorySize - 1;
++  length = std::min(length, size_t(kPhysicalMemorySize - base_ptr));
++  if (!host_ptr) {
++    host_ptr = membase_ + base_ptr;
++  }
++  auto cmd = MakeCommand<MemoryCommand>(type);
++  cmd.base_ptr = base_ptr;
++  cmd.encoding_format = MemoryEncodingFormat::kNone;
++  cmd.encoded_length = cmd.decoded_length = uint32_t(length);
++  Write(&cmd, sizeof(cmd));
++  Write(host_ptr, length);
++}
++
++void TraceWriter::WriteEdramSnapshot(const void* snapshot) {
++  if (!file_) {
++    return;
++  }
++  auto cmd = MakeCommand<EdramSnapshotCommand>(TraceCommandType::kEdramSnapshot);
++  cmd.encoding_format = MemoryEncodingFormat::kNone;
++  cmd.encoded_length = xenos::kEdramSizeBytes;
++  Write(&cmd, sizeof(cmd));
++  Write(snapshot, xenos::kEdramSizeBytes);
++}
++
++void TraceWriter::WriteEvent(EventCommand::Type event_type) {
++  if (!file_) {
++    return;
++  }
++  auto cmd = MakeCommand<EventCommand>(TraceCommandType::kEvent);
++  cmd.event_type = event_type;
++  Write(&cmd, sizeof(cmd));
++}
++
++void TraceWriter::WriteRegisters(uint32_t first_register, const uint32_t* register_values,
++                                 uint32_t register_count, bool execute_callbacks_on_play) {
++  if (!file_) {
++    return;
++  }
++  auto cmd = MakeCommand<RegistersCommand>(TraceCommandType::kRegisters);
++  cmd.first_register = first_register;
++  cmd.register_count = register_count;
++  cmd.execute_callbacks = execute_callbacks_on_play;
++  cmd.encoding_format = MemoryEncodingFormat::kNone;
++  cmd.encoded_length = uint32_t(sizeof(uint32_t) * register_count);
++  Write(&cmd, sizeof(cmd));
++  Write(register_values, cmd.encoded_length);
++}
++
++void TraceWriter::WriteGammaRamp(const reg::DC_LUT_30_COLOR* gamma_ramp_256_entry_table,
++                                 const reg::DC_LUT_PWL_DATA* gamma_ramp_pwl_rgb,
++                                 uint32_t gamma_ramp_rw_component) {
++  if (!file_) {
++    return;
++  }
++  constexpr uint32_t k256EntryTableLength = sizeof(reg::DC_LUT_30_COLOR) * 256;
++  constexpr uint32_t kPWLLength = sizeof(reg::DC_LUT_PWL_DATA) * 3 * 128;
++  auto cmd = MakeCommand<GammaRampCommand>(TraceCommandType::kGammaRamp);
++  cmd.rw_component = uint8_t(gamma_ramp_rw_component);
++  cmd.encoding_format = MemoryEncodingFormat::kNone;
++  cmd.encoded_length = k256EntryTableLength + kPWLLength;
++  Write(&cmd, sizeof(cmd));
++  Write(gamma_ramp_256_entry_table, k256EntryTableLength);
++  Write(gamma_ramp_pwl_rgb, kPWLLength);
++}
++
++}  // namespace rex::graphics
+diff --git a/src/graphics/util/draw.cpp b/src/graphics/util/draw.cpp
+index 305380e..c7c4649 100644
+--- a/src/graphics/util/draw.cpp
++++ b/src/graphics/util/draw.cpp
+@@ -19,6 +19,7 @@
+ #include <rex/graphics/pipeline/texture/info.h>
+ #include <rex/graphics/pipeline/texture/util.h>
+ #include <rex/graphics/registers.h>
++#include <rex/graphics/trace_writer.h>
+ #include <rex/graphics/util/draw.h>
+ #include <rex/graphics/xenos.h>
+ #include <rex/logging.h>
+@@ -765,7 +766,8 @@ const ResolveCopyShaderInfo resolve_copy_shader_info[size_t(ResolveCopyShaderInd
+ bool GetResolveInfo(const RegisterFile& regs, const memory::Memory& memory,
+                     uint32_t draw_resolution_scale_x, uint32_t draw_resolution_scale_y,
+                     bool fixed_rg16_truncated_to_minus_1_to_1,
+-                    bool fixed_rgba16_truncated_to_minus_1_to_1, ResolveInfo& info_out) {
++                    bool fixed_rgba16_truncated_to_minus_1_to_1, ResolveInfo& info_out,
++                    TraceWriter* trace_writer) {
+   // Don't pass uninitialized values to shaders, not to leak data to frame
+   // captures. Also initialize an invalid resolve to empty.
+   info_out.coordinate_info.packed = 0;
+@@ -793,6 +795,9 @@ bool GetResolveInfo(const RegisterFile& regs, const memory::Memory& memory,
+     assert_always();
+     return false;
+   }
++  if (trace_writer) {
++    trace_writer->WriteMemoryRead(fetch.address * sizeof(uint32_t), fetch.size * sizeof(uint32_t));
++  }
+   const float* vertices_guest =
+       reinterpret_cast<const float*>(memory.TranslatePhysical(fetch.address * sizeof(uint32_t)));
+   // Most vertices have a negative half-pixel offset applied, which we reverse.
+diff --git a/src/graphics/util/draw_extent_estimator.cpp b/src/graphics/util/draw_extent_estimator.cpp
+index 54f77a9..3e2c288 100644
+--- a/src/graphics/util/draw_extent_estimator.cpp
++++ b/src/graphics/util/draw_extent_estimator.cpp
+@@ -19,6 +19,7 @@
+ #include <rex/graphics/flags.h>
+ #include <rex/graphics/format/ucode.h>
+ #include <rex/graphics/registers.h>
++#include <rex/graphics/trace_writer.h>
+ #include <rex/graphics/util/draw_extent_estimator.h>
+ #include <rex/graphics/xenos.h>
+ #include <rex/memory.h>
+@@ -128,6 +129,14 @@ uint32_t DrawExtentEstimator::EstimateVertexMaxY(const Shader& vertex_shader) {
+       assert_true(vgt_draw_initiator.index_size == xenos::IndexFormat::kInt32);
+       index_buffer_base &= ~uint32_t(sizeof(uint32_t) - 1);
+     }
++    if (trace_writer_) {
++      uint32_t index_buffer_read_count =
++          std::min(uint32_t(vgt_draw_initiator.num_indices), uint32_t(vgt_dma_size.num_words));
++      trace_writer_->WriteMemoryRead(
++          index_buffer_base,
++          (index_format == xenos::IndexFormat::kInt16 ? sizeof(uint16_t) : sizeof(uint32_t)) *
++              size_t(index_buffer_read_count));
++    }
+     index_buffer = memory_.TranslatePhysical(index_buffer_base);
+   }
+   auto pa_su_sc_mode_cntl = regs.Get<reg::PA_SU_SC_MODE_CNTL>();

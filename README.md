@@ -7,7 +7,7 @@ A community Windows port of the Xbox 360 version of **Skate 2**, built with [ReX
 ## Getting started
 
 1. Download **Skate2-PC-v0.1.1-Windows-x64.zip** from [Releases](https://github.com/christianortel/skate2-recompile-pc/releases/latest) and extract the entire ZIP into a writable folder.
-2. Run **Import Game Files.cmd** and select your extracted Xbox 360 game folder containing `default.xex` and `data`. This is a one-time copy and verification step.
+2. Run **Import Game Files.cmd** and select your Xbox 360 disc image (`.iso`) or an extracted game folder containing `default.xex` and `data`. You can also drop either onto the file. This is a one-time copy and verification step.
 3. Connect your controller and run **Launch Skate 2.exe**.
 
 If the launcher requests the Microsoft Visual C++ x64 Runtime, open the included **Install Visual C++ Runtime.url**, run Microsoft's installer, then launch again. The [installation guide](docs/INSTALL.md) covers every step, the supported game revision, controls, and troubleshooting.
@@ -16,22 +16,25 @@ You will need:
 
 - A Windows 10/11 x64 PC with a Direct3D 12 GPU.
 - Windows PowerShell 5.1, included with Windows 10/11; the native launcher uses the existing startup script.
-- Your own extracted files from the [supported Xbox 360 game revision](docs/INSTALL.md#supported-game-version).
+- Your own ISO or extracted files of the [supported Xbox 360 game revision](docs/INSTALL.md#supported-game-version).
 - A controller. USB DualSense input works directly without DS4Windows; broader controller compatibility is still being tested.
 
 Use the named Windows ZIP under **Releases**. GitHub's **Code → Download ZIP** and the automatically generated **Source code** archives are for developers; they do not contain the player executable.
 
-Original game files are required and are not included or downloaded by this project. An ISO or compressed archive must be extracted before import.
+Original game files are required and are not included or downloaded by this project. The importer reads an Xbox 360 ISO directly; a compressed archive must be extracted first.
 
 ## Features
 
 - Native recompiled CPU code with Direct3D 12 graphics translation.
 - Free Skate, campaign gameplay, and instant replay.
 - Controller input, selectable audio output, and local saves.
-- Unlimited and paced frame-rate options.
+- Unlimited and paced frame-rate options, with an optional frame limiter for even frame delivery.
 - 1× and 2× rendering profiles, with an experimental 4× option.
+- Experimental draw-distance and detail-distance settings for world objects, characters, and vehicles.
+- In-game settings panel (F1, or hold Back + Start on an Xbox-compatible controller) with quality and performance presets.
+- Experimental GPU frame trace capture (F9) for graphics debugging.
 
-Use **Launch Skate 2.exe** for the default **2× quality / unlimited FPS** profile. **Launch Skate 2.cmd** remains supported with the same settings. For lower GPU load, use **Launch Skate 2 - 1x Performance.cmd**. Performance depends on hardware, power mode, and scene complexity.
+Use **Launch Skate 2.exe** for the default **2× quality / unlimited FPS** profile. Settings you save in the in-game settings panel (F1) or F4 replace these defaults at the next start, including settings saved earlier from F4. **Launch Skate 2.cmd** remains supported with the same behavior. For lower GPU load, use **Launch Skate 2 - 1x Performance.cmd**. Performance depends on hardware, power mode, and scene complexity.
 
 For Armoury Crate, add **Launch Skate 2.exe** as a custom game after completing the desktop import. Keep all package files together. See [Armoury Crate and ROG Ally setup](docs/INSTALL.md#armoury-crate-and-rog-ally); ROG Ally hardware has not been tested. Existing v0.1.0 players can follow the [upgrade steps](docs/INSTALL.md#saves-and-updates) without importing their game again.
 

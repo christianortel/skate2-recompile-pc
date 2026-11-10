@@ -16,11 +16,16 @@ set(SKATE2_SOURCES
     src/crash_diagnostics.cpp
     src/automatic_gpu_selection.cpp
     src/frame_rate.cpp
+    src/frame_pacing.cpp
+    src/nvidia_profile.cpp
+    src/draw_distance.cpp
+    src/settings_panel.cpp
+    src/rumble_fix.cpp
 )
 
 if(WIN32)
     add_executable(skate2 WIN32 ${SKATE2_SOURCES})
-    target_link_libraries(skate2 PRIVATE dbghelp dxgi d3d12)
+    target_link_libraries(skate2 PRIVATE dbghelp dxgi d3d12 winmm)
 else()
     add_executable(skate2 ${SKATE2_SOURCES})
 endif()

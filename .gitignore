@@ -18,6 +18,10 @@
 /skate2/userdata/
 /skate2/skate2.toml
 /packages/
+# Steam Deck folders hold the user's own game files and saves; with the
+# temporary folders an interrupted build can leave beside them.
+steam-deck/
+.steam-deck.*/
 /source-exports/
 /validation-builds/
 /launcher/out/

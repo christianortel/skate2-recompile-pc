@@ -53,9 +53,9 @@ The commands use an execution-policy setting limited to each child process. They
 
 ## 4. Import the game files
 
-Double-click **Import Game Files.cmd** in the repository root. Select your extracted folder containing `default.xex` and `data`. See the [supported revision and folder layout](INSTALL.md#supported-game-version).
+Double-click **Import Game Files.cmd** in the repository root. Select your Xbox 360 ISO, or an extracted folder containing `default.xex` and `data`. See the [supported revision and folder layout](INSTALL.md#supported-game-version). From PowerShell, pass `-IsoPath <file>` or `-SourceDirectory <folder>` to `scripts\Import-Skate2Data.ps1`.
 
-Wait for **Game files imported and verified** before continuing. If `game` already contains a completed import, skip this step. The importer does not overwrite it or extract an ISO/archive.
+Wait for **Game files imported and verified** before continuing. If `game` already contains a completed import, skip this step. The importer does not overwrite it or extract compressed archives.
 
 ## 5. Compile
 
@@ -69,7 +69,9 @@ To match the timing-enabled development build, add `-PerformanceCounters`. This 
 
 ## 6. Launch
 
-Open **Launch Skate 2.exe** from the repository root after the build. It uses the existing PowerShell startup logic to select 2× quality and unlimited FPS with the graphics synchronization settings. **Launch Skate 2.cmd** remains supported. Use **Launch Skate 2 - 1x Performance.cmd** for lower GPU load.
+Open **Launch Skate 2.exe** from the repository root after the build. It uses the existing PowerShell startup logic and applies the graphics synchronization settings. It starts with the settings saved in `skate2/skate2.toml` from the in-game settings panel (F1) or F4, or 2x quality and unlimited FPS when none are saved. **Launch Skate 2.cmd** remains supported. Use **Launch Skate 2 - 1x Performance.cmd** for lower GPU load.
+
+Running `skate2.exe` from the build directory directly uses the same default profile and saved settings, without the launcher's game-file and runtime checks. Options such as `--skate2_frame_rate=60` on its command line override saved values for that start.
 
 The executable and runtime DLLs are built under `skate2/out/build/win-amd64-release`. Saves, cache, and settings are stored under `skate2/`. See [Installation and controls](INSTALL.md#settings-and-controls).
 
@@ -88,6 +90,17 @@ The native launcher delegates startup to `scripts/Launch-Skate2.ps1`, so Windows
 ## Rebuilding
 
 For application-only changes, rerun with `-Stage Build`. After manifest or generator changes, run `-Stage Generate`, then `-Stage Build`. After SDK changes, run `-Stage SDK`, followed by generation and application build. Preserve the same `-PerformanceCounters` choice when rebuilding the SDK.
+
+The `SDK` and `All` stages apply `patches\` to the pinned SDK checkout only when `tools\rexglue-sdk-source` is pristine. If the checkout already matches the pinned revision plus the current patch set, they skip patching; the result is cached in `tools\rexglue-sdk-source\out\skate2-applied-patches.txt`. Any other state stops the build without changing the checkout: a partially applied patch set, older versions of the patches, or local edits. The script then lists the files that differ from the expected patched source. It also stops if the checkout is not at the pinned commit shown in step 3.
+
+To recover, save any SDK edits you want to keep, then reset the checkout and re-run the build:
+
+```powershell
+git -C tools\rexglue-sdk-source checkout -- .
+git -C tools\rexglue-sdk-source clean -fd
+```
+
+This discards tracked edits and removes untracked files. Ignored build output in `out\` is kept; preview the removal with `clean -nd`. `scripts\Build-Skate2.ps1 -Stage SdkPatches` checks or applies the patches without configuring or building the SDK, and needs only Git.
 
 Use a lower `-Jobs` value if compilation exhausts available memory. For nonstandard tool locations, `tools/Enter-BuildEnvironment.ps1` accepts explicit Visual Studio, LLVM, CMake, and Ninja directories.
 
